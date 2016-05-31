@@ -1,5 +1,8 @@
 package es.weso.rbe
-import es.weso.utils.Checker
+// import es.weso.utils.Checker
+import es.weso.validating._
+import ConstraintReason._
+import Checked._
 
 /**
  * A node shape
@@ -37,7 +40,7 @@ case class OrShape[+Label,+Node,+Err](ns:Seq[NodeShape[Label,Node,Err]]) extends
  *  
  */
 case class Pred[Node,Err](name: String)
-    (val pred:Node => Checker[Node,Err]) extends NodeShape[Nothing,Node,Err] {
+    (val pred:Node => Checked[Node,ConstraintReason,Err]) extends NodeShape[Nothing,Node,Err] {
   
 }
 
@@ -50,6 +53,5 @@ object NodeShape {
    * any = any value matches, so no constraint at all
    */
   def any[Node]: Pred[Node,Nothing] = 
-      Pred("any")((node) => Checker.ok(node))
-      
+      Pred("any")((node) => ok(singleReason(node, s"$node satisfies constraint any")))
 }

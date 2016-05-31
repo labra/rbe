@@ -2,7 +2,10 @@ package es.weso.rbe
 
 import es.weso.rbe._
 import util._
-import es.weso.utils.Checker
+//import es.weso.utils.Checker
+import es.weso.validating._
+import Checked._
+import ConstraintReason._
 import es.weso.collection.Bag
 import es.weso.utils.SeqUtils._
 import es.weso.utils.TryUtils._
@@ -33,7 +36,7 @@ case class Schema[Edge,Node,Label,Err](
   type Result_ = Try[Seq[SingleResult_]]
   type Graph_ = Graph[Edge,Node]
   type Schema_ = Schema[Edge,Node,Label,Err]
-  type Check_ = Checker[Err,Node]
+  type Check_ = Checked[Node,ConstraintReason,Err]
     
   /**
    * Given a label create a table of candidates
@@ -127,7 +130,7 @@ case class Schema[Edge,Node,Label,Err](
       case p: Pred[Node,Err] => {
         log.info(s"Checking condition with node $nodeToCheck and predicate ${p.name}")
         p.pred(nodeToCheck).fold(
-            (x: Node) => {
+            (x: NDResponse[Node,ConstraintReason]) => {
                  log.info(s"Condition satisfied with node $x")
              Pos(c,mkArc(edge, node, nodeToCheck),edge)
             },
