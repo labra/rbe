@@ -5,6 +5,7 @@
 .cache/
 .history/
 .lib/
+.out/
 dist/*
 target/
 lib_managed/
@@ -21,3 +22,5 @@ project/plugins/project/
 .project
 .settings/
 
+.idea/
+project/project/

@@ -34,13 +34,13 @@ case class DisjRef[Label](labels:Seq[Label]) extends NodeShape[Label,Nothing,Not
 case class OrShape[+Label,+Node,+Err](ns:Seq[NodeShape[Label,Node,Err]]) extends NodeShape[Label,Node,Err]
 
 /**
- *  Boolean Constraint on nodes (it has a name and a predicate).
+ *  Constraint on nodes (it has a name and a predicate).
  *  
  *  Note: pred is defined in the 2nd parameter section to avoid equality and hashing of functions
  *  
  */
 case class Pred[Node,Err](name: String)
-    (val pred:Node => Checked[Node,ConstraintReason,Err]) extends NodeShape[Nothing,Node,Err] {
+  ( val pred: Node => Checked[Node,ConstraintReason,Err]) extends NodeShape[Nothing,Node,Err] {
   
 }
 

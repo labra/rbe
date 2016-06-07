@@ -7,8 +7,6 @@ import math.{
   ceil, floor
   }
 import scalaz._
-import Scalaz._
-import org.scalactic._
 import IntOrUnbounded._ // Imports implicits to convert Int to IntLimit
 
 case class IntervalsException(msg:String) 

@@ -1,12 +1,12 @@
 package es.weso.collection
 
 import org.scalatest._
-import org.scalatest.prop.PropertyChecks
 import org.scalatest.prop.Checkers
 
 class BagSpec extends FunSpec with Matchers with Checkers {
 
   describe("A Bag") {
+
     it("Should add one element and have multiplicity 1") {
       val emptyBag: Bag[Char] = Bag.empty
       emptyBag.insert('a').multiplicity('a') should be(1)
@@ -25,6 +25,11 @@ class BagSpec extends FunSpec with Matchers with Checkers {
     it("Should add two elements and have size 2") {
       val emptyBag: Bag[Char] = Bag.empty
       emptyBag.insert('a').insert('b').elems.size should be(2)
+    }
+
+    it("Should add one element three times and have multiplicity 3") {
+      val emptyBag: Bag[Char] = Bag.empty
+      emptyBag.add('a',3).multiplicity('a') should be(3)
     }
 
     it("Should add one element twice and have size 1") {

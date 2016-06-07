@@ -15,27 +15,29 @@ class SchemaTest extends FunSpec with Matchers with TryValues {
   
   describe("Candidates of :a int") {
 
-      // S { :a int }
-      val schema: Schema[String, String, String, Err] =
+    val shape : SingleShape[DirectedEdge[String], String,String, Err] =
+      Shape.singleShape(rbe = Symbol((DirectEdge("a"),integer),1,1))
+
+    println(s"Shape = $shape")
+    // S { :a int }
+    val schema: Schema[String, String, String, Err] =
         Schema(
-            m = Map("S" -> Shape.empty.copy(
-                rbe = Symbol((DirectEdge("a"),integer),1,1))) 
-              ,
+            m = Map("S" -> shape),
             ignored = Seq()
-            )
+        )
 
-      val sorbe = Symbol(ref(1), 1, 1)
+    val sorbe = Symbol(ref(1), 1, 1)
 
-      val table: Table[String, String, String, Err] = Table(
+    val table: Table[String, String, String, Err] = Table(
         constraints = Map(ref(1) -> integer),
         edges = Map(DirectEdge("a") -> Set(ref(1))),
         elems = 1)
 
-      it("Compares table with expected table") {
-        compareResults(schema.mkTable("S"), Success((table, sorbe)))
-      }
+    it(s"Compares table with expected table...shape=$shape") {
+        compareResults(schema.mkTable(shape), Success((table, sorbe)))
+    }
 
-      it("Candidates of (:a 1) should be ok") {
+    it("Candidates of (:a 1) should be ok") {
         val expected = Seq(Seq(Pos(ConstraintRef(1),("x","a","1"),DirectEdge("a"))))
         val cs = schema.candidates(table, "x", Seq(Direct("a","1")))
         cs should be(expected)

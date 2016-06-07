@@ -15,9 +15,12 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
 
     describe("Resolve candidates of :a int") {
 
+      val shape : SingleShape[DirectedEdge[String],String,String,Err] =
+        Shape.singleShape(Symbol(((DirectEdge("a"), integer)), 1, 1))
+
       // S { :a int }
       val schema: Schema[String, String, String, Err] =
-        Schema(Map("S" -> Shape.empty.copy(rbe = Symbol(((DirectEdge("a"), integer)), 1, 1))), Seq())
+        Schema(m = Map("S" -> shape), ignored = Seq())
         
       val graph: Graph[String,String] = GraphMap(Map("x" -> Seq(("a","50"))))
 
@@ -29,7 +32,7 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
         elems = 1)
 
       it("Compares table with expected table") {
-        compareResults(schema.mkTable("S"), Success((table, sorbe)))
+        compareResults(schema.mkTable(shape), Success((table, sorbe)))
       }
 
       it("Matches (x,a,50) with S") {
@@ -43,6 +46,9 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
     }
 
     describe("Resolve candidates of S {:a T}, T {:b Int} ") {
+
+      val shapeS : SingleShape[DirectedEdge[String],String,String,Err] =
+        Shape.singleShape(Symbol(((DirectEdge("a"), Ref("T"))), 1, 1))
 
       val schema: Schema[String, String, String, Err] =
         Schema(Map(
@@ -64,7 +70,7 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
         elems = 1)
 
       it("Compares table with expected table") {
-        compareResults(schema.mkTable("S"), Success((table, sorbe)))
+        compareResults(schema.mkTable(shapeS), Success((table, sorbe)))
       }
 
       it("Matches (x,a,50) with S") {
@@ -80,14 +86,18 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
     
     describe("Resolve candidates of S {:a T1, :a T2}, T1 {:b Int}, T2 {:b Int} ") {
 
+      val singleShapeS : SingleShape[DirectedEdge[String],String,String,Err] =
+        Shape.empty.copy(rbe = And(Symbol(((DirectEdge("a"), Ref("T1"))),1,1),Symbol(((DirectEdge("a"), Ref("T2"))),1,1)))
+
       // S { :a int, (:b any + | :a any) }
       val schema: Schema[String, String, String, Err] =
         Schema(Map(
-            "S" -> Shape.empty.copy(rbe = And(Symbol(((DirectEdge("a"), Ref("T1"))),1,1),Symbol(((DirectEdge("a"), Ref("T2"))),1,1))),
+            "S" -> singleShapeS,
             "T1" -> Shape.empty.copy(rbe = Symbol(((DirectEdge("b"), integer)), 1, 1)),
             "T2" -> Shape.empty.copy(rbe = Symbol(((DirectEdge("b"), integer)), 1, 1))
             ), Seq())
-            
+
+
       val schemaClosed: Schema[String, String, String, Err] =
         Schema(Map(
             "S" -> Shape.empty.copy(
@@ -121,7 +131,7 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
         elems = 2)
 
       it("Compares table with expected table") {
-        compareResults(schema.mkTable("S"), Success((table, sorbe)))
+        compareResults(schema.mkTable(singleShapeS), Success((table, sorbe)))
       }
 
       it("Matches (x,a,y)(x,a,z)(y,b,40)(y,b,51) with S") {

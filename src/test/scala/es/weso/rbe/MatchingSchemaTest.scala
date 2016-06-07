@@ -1,21 +1,53 @@
 package es.weso.rbe
 
 import org.scalatest._
-import es.weso.collection._
-import es.weso.rbe.Interval._
 import util._
-import es.weso.rbe._
 import StringGraph._
 import es.weso.typing.PosNegTyping
+import Shape._
 
 class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
   
   def noTs: Set[(String,String,String)] = Set()
 
-  describe("Graphs from paper") {
+  describe("Single recursion") {
+    val g: Graph[String, String] = GraphMap(
+      Map(
+        "n0" -> List(("a", "n0")))
+    )
+
+    val s : Schema[String,String,String,Throwable] =
+      Schema(
+        Map("t0" ->
+          Shape.empty.copy(rbe = Symbol(((DirectEdge("a"), Ref("t0"))), 1, 1))),
+          Seq())
+
+    val expectedTyping =
+      Seq((PosNegTyping.fromPosMap(Map("n0" -> Set("t0"))),Set(("n0","a","n0"))))
+
+    matchesNodeLabel("n0", "t0", g, s, expectedTyping)
+
+  }
+
+  describe("Single triple") {
+    val g: Graph[String, String] = GraphMap(
+      Map("n0" -> List(("a", "n0"))))
+
+    val s : Schema[String,String,String,Throwable] =
+      Schema(
+        Map("t0" -> singleShape(rbe = Symbol((DirectEdge("a"), Ref("t0")), 1, 1))),
+        ignored= Seq())
+
+    val expectedTyping =
+      Seq((PosNegTyping.fromPosMap(Map("n0" -> Set("t0"))),Set(("n0","a","n0"))))
+
+    matchesNodeLabel("n0", "t0", g, s, expectedTyping)
+
+  }
+
+   describe("Graphs from paper") {
 
     // Example graphs from paper
-
     val g0: Graph[String, String] = GraphMap(
       Map(
         "n0" -> List(("a", "n1"), ("b", "n2"), ("a", "n3")),
@@ -105,7 +137,7 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
   
   describe("Basic matchings with plus") {
       val s : Schema[String,String,String,Err] = 
-        Schema(Map("s" -> Shape.empty.copy(rbe = Plus(Symbol(((DirectEdge("a"), integer)), 1, 1)))),
+        Schema(Map("s" -> Shape.empty.copy(rbe = Plus(Symbol((DirectEdge("a"), integer), 1, 1)))),
         Seq())
       val typing = PosNegTyping.fromPosMap(Map("x" -> Set("s")))
 
