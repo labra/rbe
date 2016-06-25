@@ -41,14 +41,14 @@ case class Schema[Edge,Node,Label,Err](
   def mkTable(shape: SingleShape[DirectedEdge[Edge],Node,Label,Err]): Try[(Table_, Rbe[ConstraintRef])] = {
      val (table,rbe) = mkTableAux(shape.rbe,Table.empty)
 //     val (table1,rbe1) = addExtras(shape.extras,table,rbe)
-     debug(s"Table created: table = $table\nrbe = $rbe")
+     debugStep(s"Table created: table = $table\nrbe = $rbe")
      Success((table,rbe)) 
   }
   
   private def mkTableAux(
       rbe: RBE_,
       current: Table_): (Table_,Rbe[ConstraintRef]) = {
-    println(s"mkTableAux: $rbe")
+    debugStep(s"mkTableAux: $rbe")
     rbe match {
       case Empty => (current, Empty)
       case Symbol((p,c),m,n) => {
@@ -102,7 +102,7 @@ case class Schema[Edge,Node,Label,Err](
       edge: DirectedEdge[Edge], 
       nodeToCheck: Node, 
       c: ConstraintRef): Candidate_ = {
-    debug(s"Check candidate $c with shape $shape. Edge: $edge, node: $node")
+    debugStep(s"Check candidate $c with shape $shape. Edge: $edge, node: $node")
     shape match {
       case Ref(label) => 
         Pending(c,nodeToCheck,label,mkArc(edge, node, nodeToCheck),edge)  
@@ -121,14 +121,14 @@ case class Schema[Edge,Node,Label,Err](
         PendingSeq(c,nodeToCheck,labels,mkArc(edge, node, nodeToCheck),edge) 
         
       case p: Pred[Node,Err] => {
-        debug(s"Checking condition with node $nodeToCheck and predicate ${p.name}")
+        debugStep(s"Checking condition with node $nodeToCheck and predicate ${p.name}")
         p.pred(nodeToCheck).fold(
             (x: NDResponse[Node,ConstraintReason]) => {
-             debug(s"Condition satisfied with node $x")
+             debugStep(s"Condition satisfied with node $x")
              Pos(c,mkArc(edge, node, nodeToCheck),edge)
             },
             (es:Seq[Err]) => {
-             debug(s"Condition failed on $nodeToCheck with predicate ${p.name}. Error = $es")
+             debugStep(s"Condition failed on $nodeToCheck with predicate ${p.name}. Error = $es")
              Neg(c,mkArc(edge, node, nodeToCheck),edge,es)  // TODO: Check how to integrate error messages 
             }
         )
@@ -174,9 +174,9 @@ case class Schema[Edge,Node,Label,Err](
       Rbe: Rbe[ConstraintRef],
       open:Boolean, 
       extras: Seq[DirectedEdge[Edge]]): Seq[Candidates_] = {
-    debug(s"filterCandidates: out = $out, Rbe = $Rbe")
+    debugStep(s"filterCandidates: out = $out, Rbe = $Rbe")
     val css = zipCandidates(table,node,out)
-    debug(s"zip candidates: $css") 
+    debugStep(s"zip candidates: $css") 
     css.filter(cs => matchCandidateRbe(cs,Rbe,open,extras))
   }
   
@@ -198,10 +198,10 @@ case class Schema[Edge,Node,Label,Err](
       rbe: Rbe[ConstraintRef], 
       open: Boolean,
       extras: Seq[DirectedEdge[Edge]]): Boolean = {
-    debug(s"--Checking candidate: $cs with sorbe: $rbe. Bag: ${candidatesToBag(cs)}. Interval: ${rbe.interval(candidatesToBag(cs))}")
+    debugStep(s"--Checking candidate: $cs with sorbe: $rbe. Bag: ${candidatesToBag(cs)}. Interval: ${rbe.interval(candidatesToBag(cs))}")
     val b = !containsContradictions(cs,extras) && 
             rbe.containsWithRepeats(candidatesToBag(cs),open)
-    debug(s"--Result of checking candidate $cs with $rbe = $b")
+    debugStep(s"--Result of checking candidate $cs with $rbe = $b")
     b
   }
   
@@ -293,9 +293,9 @@ case class Schema[Edge,Node,Label,Err](
       case PendingAlt(c,obj,labels,arc,_) => rest match {
         case Failure(e) => Failure(e)
         case Success(results) => {
-          debug(s"Pending alternatives $c, labels=$labels, results=$results")
+          debugStep(s"Pending alternatives $c, labels=$labels, results=$results")
           val rs = results.map(result => matchNodeInSomeLabelsTyping(obj,labels,g,result))
-          debug(s"rs: $rs") 
+          debugStep(s"rs: $rs") 
           val f = filterSuccess(rs)
           val r = f.map(t => t.flatten)
           addArcResult(arc,r)
@@ -305,9 +305,9 @@ case class Schema[Edge,Node,Label,Err](
       case PendingOr(c,obj,vs,arc,_) => rest match {
         case Failure(e) => Failure(e)
         case Success(results) => {
-          debug(s"Pending alternatives $c, vs=$vs, results=$results")
+          debugStep(s"Pending alternatives $c, vs=$vs, results=$results")
           val rs = results.map(result => matchNodeInSomeTyping(obj,vs,g,result))
-          debug(s"rs: $rs") 
+          debugStep(s"rs: $rs") 
           val f = filterSuccess(rs)
           val r = f.map(t => t.flatten)
           addArcResult(arc,r)
@@ -317,12 +317,12 @@ case class Schema[Edge,Node,Label,Err](
       case Pos(ref,arc,_) => { 
         // Basic matching with no pending
         // TODO: Accumulate triples checked?
-        debug(s"Basic candidate matched. Constraint: $ref, node: $n, arc: $arc" )
+        debugStep(s"Basic candidate matched. Constraint: $ref, node: $n, arc: $arc" )
         addArcResult(arc,rest)
       }
       case Neg(ref,arc,_,es) => { 
         // TODO: Throw exception?
-        debug(s"Neg candidate: $ref. Node: $n. Arc = $arc, violations: $es")
+        debugStep(s"Neg candidate: $ref. Node: $n. Arc = $arc, violations: $es")
         rest
       }
 
@@ -387,7 +387,7 @@ case class Schema[Edge,Node,Label,Err](
   // TODO: Check if it doesn't evaluate the whole seq 
   def passSome[A,B](ls:Seq[A],eval: A => Try[Seq[B]]): Try[Seq[B]] = {
     val maybes = ls.map(x => eval(x)).filter(x => x.isSuccess && !x.get.isEmpty).map(_.get)
-    debug(s"passSome: $maybes")
+    debugStep(s"passSome: $maybes")
     if (maybes.isEmpty) 
       Failure(throw new Exception("None of the alternatives pass"))
     else 
@@ -404,10 +404,10 @@ case class Schema[Edge,Node,Label,Err](
       labels: Seq[Label], 
       graph: Graph_,
       current: SingleResult_): Result_ = {
-    debug(s"matchNodeInSomeLabels. Labels: $labels, current: $current")
+    debugStep(s"matchNodeInSomeLabels. Labels: $labels, current: $current")
     def eval(x:Label): Result_ = matchNodeInTyping(node,x,graph,current)
     val r = passSome(labels,eval _)
-    debug(s"after passSome -> $r")
+    debugStep(s"after passSome -> $r")
     r
   }
   
@@ -421,7 +421,7 @@ case class Schema[Edge,Node,Label,Err](
       vs: Seq[NodeShape[Label,Node,Err]], 
       graph: Graph_,
       current: SingleResult_): Result_ = {
-    debug(s"matchNodeInSome. vs: $vs, current: $current")
+    debugStep(s"matchNodeInSome. vs: $vs, current: $current")
     def eval(x:NodeShape[Label,Node,Err]): Result_ = { 
       x match {
         case Ref(label) => matchNodeInTyping(node,label,graph,current)
@@ -435,7 +435,7 @@ case class Schema[Edge,Node,Label,Err](
       }
     }
     val r = passSome(vs,eval _)
-    debug(s"after passSome -> $r")
+    debugStep(s"after passSome -> $r")
     r
   }
 
@@ -460,7 +460,7 @@ case class Schema[Edge,Node,Label,Err](
       shape: SingleShape[DirectedEdge[Edge],Node,Label,Err],
       graph: Graph_,
       current: SingleResult_): Result_ = {
-    debug(s"-- Checking $node with $label which is associated with shape $shape\nCurrent: $current" )
+    debugStep(s"-- Checking $node with $label which is associated with shape $shape\nCurrent: $current" )
 
     val currentTyping = current._1
     // If the node has already been checked, return without checking again to avoid recursion
@@ -471,12 +471,12 @@ case class Schema[Edge,Node,Label,Err](
     else {
       // TODO: Maybe, we could try again in a more dynamic setting
       val out = neighbours(graph, node)
-      debug(s"Out: $out")
+      debugStep(s"Out: $out")
       for {
         (table, sorbe) <- mkTable(shape)
         val open = !shape.closed
         allCandidates <- {
-          debug(s"out before calculating candidates: $out")
+          debugStep(s"out before calculating candidates: $out")
           val cs = calculateCandidates(table, out, sorbe, node, open, shape.extras)
           cs
         }
@@ -503,7 +503,7 @@ case class Schema[Edge,Node,Label,Err](
       label: Label, 
       graph: Graph_,
       current: SingleResult_): Result_ = {
-    debug(s"-- Checking that node $node doesn't match with label $label, current: $current" )
+    debugStep(s"-- Checking that node $node doesn't match with label $label, current: $current" )
 
     val res = matchNodeInTyping(node,label,graph,current)
     if (res.isFailure || res.get.isEmpty) {
@@ -529,15 +529,15 @@ case class Schema[Edge,Node,Label,Err](
     def onlyDirect(neigh: Neigh_): Boolean = {
       neigh.isDirect 
     }
-    debug(s"containsAllTriples: node: $node, out: $out, triples: $triples") 
+    debugStep(s"containsAllTriples: node: $node, out: $out, triples: $triples") 
     val outTriples : Seq[(Node,Edge,Node)] = 
       out.filter(notInIgnored).
           filter(notInExtras(extras)).
           filter(onlyDirect).  // TODO: Modify this line when allowing CLOSED ^ 
           map(_.mkTriple(node))
-    debug(s"containsAllTriples: outTriples after filters: $outTriples") 
+    debugStep(s"containsAllTriples: outTriples after filters: $outTriples") 
     val cond = outTriples.forall(triples contains _)
-    debug(s"containsAllTriples: $cond")
+    debugStep(s"containsAllTriples: $cond")
     cond
   }
   
@@ -551,7 +551,7 @@ case class Schema[Edge,Node,Label,Err](
       node: Node, 
       label: Label, 
       graph: Graph_): Result_ = {
-    debug(s"Matching node $node with $label\nGraph: $graph")
+    debugStep(s"Matching node $node with $label\nGraph: $graph")
     matchNodeInTyping(node,label,graph,(PosNegTyping.empty,Set()))
   }
   
@@ -562,7 +562,7 @@ case class Schema[Edge,Node,Label,Err](
     def comb(pair:(Node,Label), current: SingleResult_): Result_ = {
       matchNodeInTyping(pair._1,pair._2,graph,current)
     }
-    debug(s"nodesLabels: ls = $ls")
+    debugStep(s"nodesLabels: ls = $ls")
     combineAll(ls,empty,comb _)
   }
 }

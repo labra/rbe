@@ -1,13 +1,13 @@
 import sbt._
 import sbt.Keys._
 
-lazy val root = project.in(file("."))
+lazy val rbe = project.in(file("."))
 
 organization := "es.weso"
 
 name := "rbe"
 
-version := "0.0.2"
+version := "0.0.4"
 
 scalaVersion := "2.11.8"
 
@@ -16,7 +16,7 @@ publishMavenStyle := true
 libraryDependencies ++= Seq(
   "org.scalatest" %%% "scalatest" % "3.0.0-M15" 
 , "org.typelevel" %% "cats" % "0.6.0-M1"
-, "es.weso" % "weso_utils_2.11" % "0.0.6" 
+, "es.weso" % "weso_utils_2.11" % "0.0.7" 
 , "es.weso" % "validating_2.11" % "0.0.6" 
 )
 
