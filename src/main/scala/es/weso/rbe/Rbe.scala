@@ -3,7 +3,7 @@ package es.weso.rbe
 import es.weso.collection._
 import Interval._
 import IntOrUnbounded._
-import es.weso.utils.Debugging
+import es.weso.utils._
 
 
 /**
@@ -18,7 +18,7 @@ import es.weso.utils.Debugging
  *     S. Staworko, I. Boneva, J. Labra, S. Hym, E. Prud'hommeaux, H. Solbrig
  * 
  */
-sealed trait Rbe[+A] extends Debugging {
+sealed trait Rbe[+A] {
   
   /**
    * Calculates the interval of a bag from a RBE
@@ -159,9 +159,9 @@ sealed trait Rbe[+A] extends Debugging {
   def derivBag[U >: A](bag: Bag[U], open: Boolean, controlled: Seq[U]): Rbe[U] = {
     val e: Rbe[U] = this
     def f(x: U, rest: Rbe[U]): Rbe[U] = {
-      debugStep(s"DerivBag. step: x: $x, rest: $rest")
+      ConsoleDebugger.debugStep(s"DerivBag. step: x: $x, rest: $rest")
       val r = rest.deriv(x,open,controlled)
-      debugStep(s"DerivBag. deriv($x)($rest) = $r")
+      ConsoleDebugger.debugStep(s"DerivBag. deriv($x)($rest) = $r")
       r
     }
     bag.toSeq.foldRight(e)(f)

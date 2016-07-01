@@ -1,10 +1,12 @@
-package es.weso.rbe
+package es.weso.rbe.matcher
 
 import org.scalatest._
 import util._
-import StringGraph._
 import es.weso.typing.PosNegTyping
+import es.weso.rbe._
+import StringGraph._
 import Shape._
+
 
 class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
   
@@ -267,8 +269,9 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
       g: Graph[Edge, Node],
       s: Schema[Edge, Node, Label,Err], 
       t: Seq[(PosNegTyping[Node, Label],Set[(Node,Edge,Node)])]): Unit = {
+      val matcher = IterativeMatcher(s,g)
       it(s"Matches node $n with label $l in graph ${g} and schema ${s}") {
-        s.matchNode(n, l, g) should be(Success(t))
+        matcher.matchNode(n, l) should be(Success(t))
       }
     }
     
@@ -277,8 +280,9 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
       l: Label,
       g: Graph[Edge, Node],
       s: Schema[Edge, Node, Label,Err]): Unit = {
+      val matcher = IterativeMatcher(s,g)
       it(s"Doesn't match node $n with label $l in graph ${g} and schema ${s}") {
-        val result = s.matchNode(n, l, g) 
+        val result = matcher.matchNode(n, l) 
         result match {
           case Success(ls) if (!ls.isEmpty) => fail(s"It matches with: $ls")
           case _ => info("Doesn't match as expected")

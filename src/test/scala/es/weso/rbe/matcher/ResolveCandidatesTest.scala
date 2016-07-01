@@ -1,11 +1,12 @@
-package es.weso.rbe
+package es.weso.rbe.matcher
 
-import org.scalatest.{ Pending => ScalaTestPending, _ }
+import org.scalatest._
 import es.weso.collection._
 import util._
 import es.weso.rbe._
 import StringGraph._
 import es.weso.typing._
+import es.weso.rbe.Err
 
 class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
   
@@ -30,16 +31,18 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
         constraints = Map(ref(1) -> integer),
         edges = Map(DirectEdge("a") -> Set(ref(1))),
         elems = 1)
+        
+      val matcher = IterativeMatcher(schema,graph)
 
       it("Compares table with expected table") {
-        compareResults(schema.mkTable(shape), Success((table, sorbe)))
+        compareResults(matcher.mkTable(shape), Success((table, sorbe)))
       }
 
       it("Matches (x,a,50) with S") {
         val typeRow: TypeRow[String] = TypeRow(pos = Set("S"),Set()) 
         val expectedType : PosNegTyping[String,String] = PosNegTypingAsMap(Map("x" -> typeRow)) 
         assertResult(Success(Seq((expectedType,Set(("x","a","50")))))) {
-          schema.matchNode("x", "S", graph)
+          matcher.matchNode("x", "S")
         }
       }
 
@@ -68,9 +71,11 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
         constraints = Map(ref(1) -> Ref("T")),
         edges = Map(DirectEdge("a") -> Set(ref(1))),
         elems = 1)
+        
+      val matcher = IterativeMatcher(schema,graph)
 
       it("Compares table with expected table") {
-        compareResults(schema.mkTable(shapeS), Success((table, sorbe)))
+        compareResults(matcher.mkTable(shapeS), Success((table, sorbe)))
       }
 
       it("Matches (x,a,50) with S") {
@@ -78,7 +83,7 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
         val typeT: TypeRow[String] = TypeRow(pos = Set("T"),Set())
         val expectedType = PosNegTypingAsMap(Map("x" -> typeS, "y" -> typeT)) 
         assertResult(Success(Seq((expectedType,Set(("x","a","y"),("y","b","51")))))) {
-          schema.matchNode("x", "S", graph)
+          matcher.matchNode("x", "S")
         }
       }
 
@@ -129,9 +134,14 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
         constraints = Map(ref(1) -> Ref("T1"), ref(2) -> Ref("T2")),
         edges = Map(DirectEdge("a") -> Set(ref(1),ref(2))),
         elems = 2)
+        
+      val matcher1 = IterativeMatcher(schema,g1)
+      val matcher2 = IterativeMatcher(schema,g2)
+      val matcherClosed1 = IterativeMatcher(schemaClosed,g1)
+      val matcherClosed2 = IterativeMatcher(schemaClosed,g2)
 
       it("Compares table with expected table") {
-        compareResults(schema.mkTable(singleShapeS), Success((table, sorbe)))
+        compareResults(matcher1.mkTable(singleShapeS), Success((table, sorbe)))
       }
 
       it("Matches (x,a,y)(x,a,z)(y,b,40)(y,b,51) with S") {
@@ -144,7 +154,7 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
             (expectedType1,Set(("x","a","y"),("y","b","51"))),
             (expectedType2,Set(("x","a","y"),("y","b","51")))
             ))) {
-          schema.matchNode("x", "S", g1)
+          matcher1.matchNode("x", "S")
         }
       }
       it("Matches (x,a,y)(x,x,x)(x,a,z)(y,b,40)(y,b,51) with S") {
@@ -157,7 +167,7 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
             (expectedType1,Set(("x","a","y"),("y","b","51"))),
             (expectedType2,Set(("x","a","y"),("y","b","51")))
             ))) {
-          schema.matchNode("x", "S", g2)
+          matcher2.matchNode("x", "S")
         }
       }
       it("Doesn't match (x,a,y)(x,x,x)(x,a,z)(y,b,40)(y,b,51) with S if schemaClosed") {
@@ -167,7 +177,7 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
         val expectedType1 = PosNegTypingAsMap(Map("x" -> typeS, "y" -> typeT1, "z" -> typeT2)) 
         val expectedType2 = PosNegTypingAsMap(Map("x" -> typeS, "y" -> typeT2, "z" -> typeT1)) 
         assertResult(Success(Seq())) {
-          schemaClosed.matchNode("x", "S", g2)
+          matcherClosed2.matchNode("x", "S")
         }
       }
 

@@ -1,4 +1,5 @@
 package es.weso.rbe
+import matcher._
 
 import org.scalatest.{ Pending => ScalaTestPending, _ }
 import es.weso.collection._
@@ -32,19 +33,24 @@ class SchemaTest extends FunSpec with Matchers with TryValues {
         constraints = Map(ref(1) -> integer),
         edges = Map(DirectEdge("a") -> Set(ref(1))),
         elems = 1)
+        
+    val g: Graph[String,String] = GraphMap(Map())
+    
 
+    val matcher = IterativeMatcher(schema,g)
+        
     it(s"Compares table with expected table...shape=$shape") {
-        compareResults(schema.mkTable(shape), Success((table, sorbe)))
+        compareResults(matcher.mkTable(shape), Success((table, sorbe)))
     }
 
     it("Candidates of (:a 1) should be ok") {
         val expected = Seq(Seq(Pos(ConstraintRef(1),("x","a","1"),DirectEdge("a"))))
-        val cs = schema.candidates(table, "x", Seq(Direct("a","1")))
+        val cs = matcher.candidates(table, "x", Seq(Direct("a","1")))
         cs should be(expected)
       }
       
       it("Candidates of (:a foo) should be negative") {
-        val cs = schema.candidates(table, "x", Seq(Direct("a","foo")))
+        val cs = matcher.candidates(table, "x", Seq(Direct("a","foo")))
         val c = cs.head.head
         c.sign should be(-1)
       } 

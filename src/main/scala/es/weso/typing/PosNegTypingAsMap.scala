@@ -2,7 +2,8 @@ package es.weso.typing
 
 import util._
 
-case class PosNegTypingAsMap[Node,Label](m: Map[Node,TypeRow[Label]]) 
+case class PosNegTypingAsMap[Node,Label](
+    m: Map[Node,TypeRow[Label]]) 
   extends PosNegTyping[Node,Label] {
   
   override def nodes = m.keys.toSeq
