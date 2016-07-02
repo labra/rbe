@@ -6,28 +6,27 @@ import util._
 import es.weso.rbe._
 import StringGraph._
 import es.weso.typing._
-import es.weso.rbe.Err
 
 class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
   
-  def any: NodeShape[String,String,Err] = NodeShape.any
+  def any: NodeShape[String,String] = NodeShape.any
   
   def ref(n: Int) = ConstraintRef(value = n)
 
     describe("Resolve candidates of :a int") {
 
-      val shape : SingleShape[DirectedEdge[String],String,String,Err] =
+      val shape : SingleShape[DirectedEdge[String],String,String] =
         Shape.singleShape(Symbol(((DirectEdge("a"), integer)), 1, 1))
 
       // S { :a int }
-      val schema: Schema[String, String, String, Err] =
+      val schema: Schema[String, String, String] =
         Schema(m = Map("S" -> shape), ignored = Seq())
         
       val graph: Graph[String,String] = GraphMap(Map("x" -> Seq(("a","50"))))
 
       val sorbe = Symbol(ref(1), 1, 1)
 
-      val table: Table[String, String, String, Err] = Table(
+      val table: Table[String, String, String] = Table(
         constraints = Map(ref(1) -> integer),
         edges = Map(DirectEdge("a") -> Set(ref(1))),
         elems = 1)
@@ -50,10 +49,10 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
 
     describe("Resolve candidates of S {:a T}, T {:b Int} ") {
 
-      val shapeS : SingleShape[DirectedEdge[String],String,String,Err] =
+      val shapeS : SingleShape[DirectedEdge[String],String,String] =
         Shape.singleShape(Symbol(((DirectEdge("a"), Ref("T"))), 1, 1))
 
-      val schema: Schema[String, String, String, Err] =
+      val schema: Schema[String, String, String] =
         Schema(Map(
             "S" -> Shape.empty.copy(rbe = Symbol(((DirectEdge("a"), Ref("T"))),1,1)),
             "T" -> Shape.empty.copy(rbe = Symbol(((DirectEdge("b"), integer)), 1, 1))),
@@ -67,7 +66,7 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
 
       val sorbe = Symbol(ref(1), 1, 1)
 
-      val table: Table[String, String, String, Err] = Table(
+      val table: Table[String, String, String] = Table(
         constraints = Map(ref(1) -> Ref("T")),
         edges = Map(DirectEdge("a") -> Set(ref(1))),
         elems = 1)
@@ -91,11 +90,11 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
     
     describe("Resolve candidates of S {:a T1, :a T2}, T1 {:b Int}, T2 {:b Int} ") {
 
-      val singleShapeS : SingleShape[DirectedEdge[String],String,String,Err] =
+      val singleShapeS : SingleShape[DirectedEdge[String],String,String] =
         Shape.empty.copy(rbe = And(Symbol(((DirectEdge("a"), Ref("T1"))),1,1),Symbol(((DirectEdge("a"), Ref("T2"))),1,1)))
 
       // S { :a int, (:b any + | :a any) }
-      val schema: Schema[String, String, String, Err] =
+      val schema: Schema[String, String, String] =
         Schema(Map(
             "S" -> singleShapeS,
             "T1" -> Shape.empty.copy(rbe = Symbol(((DirectEdge("b"), integer)), 1, 1)),
@@ -103,7 +102,7 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
             ), Seq())
 
 
-      val schemaClosed: Schema[String, String, String, Err] =
+      val schemaClosed: Schema[String, String, String] =
         Schema(Map(
             "S" -> Shape.empty.copy(
                 rbe = And(Symbol(((DirectEdge("a"), Ref("T1"))),1,1),Symbol(((DirectEdge("a"), Ref("T2"))),1,1)),
@@ -130,7 +129,7 @@ class ResolveCandidatesTest extends FunSpec with Matchers with TryValues {
 
       val sorbe = And(Symbol(ref(1), 1, 1),Symbol(ref(2), 1, 1))
 
-      val table: Table[String, String, String, Err] = Table(
+      val table: Table[String, String, String] = Table(
         constraints = Map(ref(1) -> Ref("T1"), ref(2) -> Ref("T2")),
         edges = Map(DirectEdge("a") -> Set(ref(1),ref(2))),
         elems = 2)

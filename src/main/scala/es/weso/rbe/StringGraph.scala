@@ -2,6 +2,7 @@ package es.weso.rbe
 
 import es.weso.utils._
 import es.weso.validating._
+import Constraint._
 import Checked._
 import ConstraintReason._
 /**
@@ -29,24 +30,32 @@ object StringGraph {
    * @param ferr a function that converts a String into an Error
    * @return if the value satisfies the predicate, a Checker with an ok value, otherwise the error that results of applying ferr to the name of the condition
    */
-  def cond[A](x: A, p: A => Boolean, name: String)(implicit ferr: String => Err): Checked[A,ConstraintReason,Err] = {
+  def cond[A](x: A, p: A => Boolean, name: String)(implicit ferr: String => Err): Checked[A,ConstraintReason,ConstraintError[A]] = {
     if (p(x)) ok(singleReason(x,"OK"))
-    else checkError(Err(s"Failed condition $name on $x"))
+    else errString(s"Failed condition $name on $x")
   }
 
-  lazy val isA: Pred[String,Err] = 
+  lazy val isA: Pred[String] = 
       Pred("isA")(x => 
         cond(x, (x: String) => x == "a","eqA"))
 
-  lazy val integer: Pred[String,Err] = 
+  lazy val integer: Pred[String] = 
       Pred("int")(x => 
         cond(x, (x : String) => x.matches("""\d+"""), "integer"))
         
-  lazy val one: Pred[String,Err] = 
+  lazy val letter: Pred[String] = 
+      Pred("letter")(x => 
+        cond(x, (x : String) => x.matches("""[a-zA-Z]+"""), "letter"))
+        
+  lazy val size2: Pred[String] = 
+       Pred("size2")(x => 
+        cond(x, (x : String) => x.length == 2, "size2"))
+        
+  lazy val one: Pred[String] = 
       Pred("one")(x => 
         cond(x, (x : String) => x=="1", "== 1"))
       
-  lazy val two: Pred[String,Err] = 
+  lazy val two: Pred[String] = 
       Pred("two")(x => 
         cond(x, (x : String) => x=="2", "== 2"))
           

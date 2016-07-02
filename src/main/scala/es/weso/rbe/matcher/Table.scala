@@ -1,10 +1,13 @@
-package es.weso.rbe
+package es.weso.rbe.matcher
+
+import es.weso.rbe.DirectedEdge
+import es.weso.rbe.NodeShape
 
 /**
  * 
  */
-case class Table[Edge,Node,Label,Err](
-    constraints: Map[ConstraintRef,NodeShape[Label,Node,Err]],
+case class Table[Edge,Node,Label](
+    constraints: Map[ConstraintRef,NodeShape[Label,Node]],
     edges: Map[DirectedEdge[Edge],Set[ConstraintRef]],
     elems: Int) {
   
@@ -19,6 +22,6 @@ case class Table[Edge,Node,Label,Err](
 }
 
 object Table {
-  def empty[Edge,Node,Label,Err]: Table[Edge,Node,Label,Err] =
+  def empty[Edge,Node,Label,Err]: Table[Edge,Node,Label] =
     Table(Map(),Map(),0)
 }    

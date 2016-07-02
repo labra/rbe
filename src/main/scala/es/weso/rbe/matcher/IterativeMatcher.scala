@@ -8,31 +8,31 @@ import es.weso.utils.SeqUtils._
 import es.weso.utils.TryUtils._
 import es.weso.rbe._
 
-case class IterativeMatcher[Edge,Node,Label,Err](
-    schema: Schema[Edge,Node,Label,Err],
+case class IterativeMatcher[Edge,Node,Label](
+    schema: Schema[Edge,Node,Label],
     graph: Graph[Edge,Node]
-    ) extends Matcher[Edge,Node,Label,Err] {
+    ) extends Matcher[Edge,Node,Label] {
   
     // These types are specialized versions of the general types for readability
-  type RBE_ = Rbe[(DirectedEdge[Edge],NodeShape[Label,Node,Err])] 
-  type Table_ = Table[Edge,Node,Label,Err]
-  type Schema_ = Schema[Edge,Node,Label,Err]
+  type RBE_ = Rbe[(DirectedEdge[Edge],NodeShape[Label,Node])] 
+  type Table_ = Table[Edge,Node,Label]
+  type Schema_ = Schema[Edge,Node,Label]
   type Arc_ = (Node,Edge,Node)
   type Neigh_ = Neigh[Edge,Node]
   type Neighs_ = Seq[Neigh_]
-  type Candidate_ = Candidate[Edge,Node,Label,Err]
+  type Candidate_ = Candidate[Edge,Node,Label]
   type Candidates_ = Seq[Candidate_]
   type Typing_ = PosNegTyping[Node,Label]
   type SingleResult_ = (Typing_,Set[(Node,Edge,Node)])
   type Result_ = Try[Seq[SingleResult_]]
   type Graph_ = Graph[Edge,Node]
-  type Check_ = Checked[Node,ConstraintReason,Err]
+  type Check_ = Checked[Node,ConstraintReason,ConstraintError[Node]]
     
   /**
    * Given a label create a table of candidates
    */
   def mkTable(
-      shape: SingleShape[DirectedEdge[Edge],Node,Label,Err]
+      shape: SingleShape[DirectedEdge[Edge],Node,Label]
      ): Try[(Table_, Rbe[ConstraintRef])] = {
      val (table,rbe) = mkTableAux(shape.rbe,Table.empty)
      ConsoleDebugger.debugStep(s"Table created: table = $table\nrbe = $rbe")
@@ -90,7 +90,7 @@ case class IterativeMatcher[Edge,Node,Label,Err](
   }
   
   private def checkCandidate(
-      shape: NodeShape[Label,Node,Err], 
+      shape: NodeShape[Label,Node], 
       node: Node, 
       edge: DirectedEdge[Edge], 
       nodeToCheck: Node, 
@@ -113,14 +113,14 @@ case class IterativeMatcher[Edge,Node,Label,Err](
       case ConjRef(labels) => 
         PendingSeq(c,nodeToCheck,labels,mkArc(edge, node, nodeToCheck),edge) 
         
-      case p: Pred[Node,Err] => {
+      case p: Pred[Node] => {
         ConsoleDebugger.debugStep(s"Checking condition with node $nodeToCheck and predicate ${p.name}")
         p.pred(nodeToCheck).fold(
             (x: NDResponse[Node,ConstraintReason]) => {
              ConsoleDebugger.debugStep(s"Condition satisfied with node $x")
              Pos(c,mkArc(edge, node, nodeToCheck),edge)
             },
-            (es:Seq[Err]) => {
+            (es:Seq[ConstraintError[Node]]) => {
              ConsoleDebugger.debugStep(s"Condition failed on $nodeToCheck with predicate ${p.name}. Error = $es")
              Neg(c,mkArc(edge, node, nodeToCheck),edge,es)  // TODO: Check how to integrate error messages 
             }
@@ -134,7 +134,7 @@ case class IterativeMatcher[Edge,Node,Label,Err](
     table.edges.get(directedEdge).getOrElse(Set()).toSeq
   }
   
-  private def lookupConstraintShape(table: Table_, c: ConstraintRef): NodeShape[Label,Node,Err] = {
+  private def lookupConstraintShape(table: Table_, c: ConstraintRef): NodeShape[Label,Node] = {
     table.constraints.get(c) match {
       case None => throw SESchemaException(s"Cannot find constraintRef $c in table $table")
       case Some(ns) => ns
@@ -406,13 +406,13 @@ case class IterativeMatcher[Edge,Node,Label,Err](
    */
   private def matchNodeInSomeTyping(
       node: Node, 
-      vs: Seq[NodeShape[Label,Node,Err]],
+      vs: Seq[NodeShape[Label,Node]],
       current: SingleResult_): Result_ = {
     ConsoleDebugger.debugStep(s"matchNodeInSome. vs: $vs, current: $current")
-    def eval(x:NodeShape[Label,Node,Err]): Result_ = { 
+    def eval(x:NodeShape[Label,Node]): Result_ = { 
       x match {
         case Ref(label) => matchNodeInTyping(node,label,current)
-        case p: Pred[Node,Err] => { 
+        case p: Pred[Node] => { 
           val r = p.pred(node)
           if (r.isOK) Success(Seq(current))
           else 
@@ -432,7 +432,7 @@ case class IterativeMatcher[Edge,Node,Label,Err](
       current: SingleResult_): Result_ = {
     val shape = schema.m(label)
     shape match {
-      case s : SingleShape[DirectedEdge[Edge],Node,Label,Err] =>
+      case s : SingleShape[DirectedEdge[Edge],Node,Label] =>
         matchNodeSingleShapeInTyping(node,label,s,current)
       case _ => throw new Exception(s"matchNodeInTyping: unsupported shape $shape")
     }
@@ -444,7 +444,7 @@ case class IterativeMatcher[Edge,Node,Label,Err](
   private def matchNodeSingleShapeInTyping(
       node: Node,
       label: Label,
-      shape: SingleShape[DirectedEdge[Edge],Node,Label,Err],
+      shape: SingleShape[DirectedEdge[Edge],Node,Label],
       current: SingleResult_): Result_ = {
     ConsoleDebugger.debugStep(s"-- Checking $node with $label which is associated with shape $shape\nCurrent: $current" )
 
@@ -457,14 +457,14 @@ case class IterativeMatcher[Edge,Node,Label,Err](
     }
     else {
       // TODO: Maybe, we could try again in a more dynamic setting
-      val out = neighbours(graph, node)
-      ConsoleDebugger.debugStep(s"Out: $out")
+      val neighs = graph.neighbours(node)
+      ConsoleDebugger.debugStep(s"Neighs: $neighs")
       for {
         (table, sorbe) <- mkTable(shape)
         val open = !shape.closed
         allCandidates <- {
-          ConsoleDebugger.debugStep(s"out before calculating candidates: $out")
-          val cs = calculateCandidates(table, out, sorbe, node, open, shape.extras)
+          ConsoleDebugger.debugStep(s"neighs before calculating candidates: $neighs")
+          val cs = calculateCandidates(table, neighs, sorbe, node, open, shape.extras)
           cs
         }
         newTyping <- currentTyping.addPosType(node, label)
@@ -474,7 +474,7 @@ case class IterativeMatcher[Edge,Node,Label,Err](
           // filter out results that don't affect all triples in neighbourhood
           // that are not part of ignored
           val extras = shape.extras
-          results.filter(r => containsAllTriples(node, extras, out, r._2))
+          results.filter(r => containsAllTriples(node, extras, neighs, r._2))
         } else results
       }
     }
@@ -527,11 +527,6 @@ case class IterativeMatcher[Edge,Node,Label,Err](
     cond
   }
   
-  def neighbours(graph: Graph_,node: Node): Neighs_ = {
-    val out: Neighs_ = graph.out(node).map{ case (edge,node) => Direct(edge,node) }
-    val in: Neighs_ = graph.in(node).map{ case (edge,node) => Inverse(edge,node) }
-    out ++ in
-  }
   
   override def matchNode(
       node: Node, 

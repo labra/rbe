@@ -15,27 +15,30 @@ import es.weso.rbe.matcher.Matcher
 /**
  * Defines a Schema which is a map from Labels to Shapes
  */
-case class Schema[Edge,Node,Label,Err](
-    m: Map[Label,Shape[DirectedEdge[Edge],Node,Label,Err]],
+case class Schema[Edge,Node,Label](
+    m: Map[Label,Shape[DirectedEdge[Edge],Node,Label]],
     ignored: Seq[DirectedEdge[Edge]]  // Edges that are ignored in the definition of closed schemas
     ) {
   
-  type Shape_ = Shape[DirectedEdge[Edge],Node,Label,Err]
+  type Shape_ = Shape[DirectedEdge[Edge],Node,Label]
   
   def lookup(label: Label): Option[Shape_] = {
     m.get(label)
   }
+  
+  
 
 }
 
 object Schema {
-  def empty[Edge,Node,Label,Err] = Schema(Map(), Seq())
+  def empty[Edge,Node,Label](): Schema[Edge,Node,Label] = 
+    Schema(Map(), Seq())
   
-  def matchNode[Edge,Node,Label,Err](
+  def matchNode[Edge,Node,Label](
       node: Node, 
       label:Label,
-      schema:Schema[Edge,Node,Label,Err], 
-      graph: Graph[Edge,Node])(implicit matcher: Matcher[Edge,Node,Label,Err]): 
+      schema:Schema[Edge,Node,Label], 
+      graph: Graph[Edge,Node])(implicit matcher: Matcher[Edge,Node,Label]): 
       Try[Seq[(PosNegTyping[Node,Label],Set[(Node,Edge,Node)])]] = {
     matcher.matchNode(node, label)
   }

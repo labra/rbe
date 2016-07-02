@@ -4,7 +4,7 @@ import es.weso.typing._
 import es.weso.rbe.Graph
 import es.weso.rbe.Schema
 
-trait Matcher[Edge,Node,Label,Err] {
+trait Matcher[Edge,Node,Label] {
   def matchNode(
       node: Node, 
       label: Label): 

@@ -16,7 +16,7 @@ class MatchingSchemaTestSingle extends FunSpec with Matchers with TryValues {
       Map("n0" -> List(("a", "n1")),
           "n1" -> List(("b", "n1"), ("c", "n2"))))
 
-    val s: Schema[String, String, String, Throwable] =
+    val s: Schema[String, String, String] =
       Schema(
         Map("t0" -> Shape.empty.copy(rbe = Symbol(((DirectEdge("a"), Ref("t1"))), 1, 1)),
           "t1" -> Shape.empty.copy(rbe = And(Symbol(((DirectEdge("b"), Ref("t2"))), 1, 1), Symbol(((DirectEdge("c"), Ref("t3"))), 1, 1))),
@@ -46,11 +46,11 @@ class MatchingSchemaTestSingle extends FunSpec with Matchers with TryValues {
   }
 
   
-    def matchesNodeLabel[Edge, Node, Label,Err](
+    def matchesNodeLabel[Edge, Node, Label](
       n: Node,
       l: Label,
       g: Graph[Edge, Node],
-      s: Schema[Edge, Node, Label,Err], 
+      s: Schema[Edge, Node, Label], 
       t: Seq[(PosNegTyping[Node, Label],Set[(Node,Edge,Node)])]): Unit = {
       val matcher = IterativeMatcher(s,g)
       it(s"Matches node $n with label $l in graph ${g} and schema ${s}") {
@@ -58,11 +58,11 @@ class MatchingSchemaTestSingle extends FunSpec with Matchers with TryValues {
       }
     }
     
-    def noMatchNodeLabel[Edge, Node, Label,Err](
+    def noMatchNodeLabel[Edge, Node, Label](
       n: Node,
       l: Label,
       g: Graph[Edge, Node],
-      s: Schema[Edge, Node, Label,Err]): Unit = {
+      s: Schema[Edge, Node, Label]): Unit = {
       val matcher = IterativeMatcher(s,g)
       it(s"Doesn't match node $n with label $l in graph ${g} and schema ${s}") {
         val result = matcher.matchNode(n, l) 

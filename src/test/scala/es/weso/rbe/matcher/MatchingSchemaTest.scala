@@ -18,7 +18,7 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
         "n0" -> List(("a", "n0")))
     )
 
-    val s : Schema[String,String,String,Throwable] =
+    val s : Schema[String,String,String] =
       Schema(
         Map("t0" ->
           Shape.empty.copy(rbe = Symbol(((DirectEdge("a"), Ref("t0"))), 1, 1))),
@@ -35,7 +35,7 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
     val g: Graph[String, String] = GraphMap(
       Map("n0" -> List(("a", "n0"))))
 
-    val s : Schema[String,String,String,Throwable] =
+    val s : Schema[String,String,String] =
       Schema(
         Map("t0" -> singleShape(rbe = Symbol((DirectEdge("a"), Ref("t0")), 1, 1))),
         ignored= Seq())
@@ -67,14 +67,14 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
       Map("n0" -> List(("a", "n1")),
         "n1" -> List(("b", "n1"), ("c", "n2"))))
 
-    val s0 : Schema[String,String,String,Throwable] =
+    val s0 : Schema[String,String,String] =
       Schema(
         Map("t0" -> Shape.empty.copy(rbe = And(Symbol(((DirectEdge("a"), Ref("t1"))), 1, 1), Symbol(((DirectEdge("b"), Ref("t2"))), 1, 1))),
           "t1" -> Shape.empty.copy(rbe = Star(Or(Symbol(((DirectEdge("a"), Ref("t1"))), 1, 1), Symbol(((DirectEdge("b"), Ref("t2"))), 1, 1)))),
           "t2" -> Shape.empty.copy(rbe = Or(Symbol(((DirectEdge("b"), Ref("t2"))), 1, 1), Symbol(((DirectEdge("c"), Ref("t1"))), 1, 1)))),
         Seq())
 
-    val s1 : Schema[String,String,String,Throwable]  =
+    val s1 : Schema[String,String,String]  =
       Schema(
         Map("t0" -> Shape.empty.copy(rbe = Symbol(((DirectEdge("a"), Ref("t1"))), 1, 1)),
           "t1" -> Shape.empty.copy(rbe = And(Symbol(((DirectEdge("b"), Ref("t2"))), 1, 1), Symbol(((DirectEdge("c"), Ref("t3"))), 1, 1))),
@@ -83,7 +83,7 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
         Seq())
 
 
-    val s2: Schema[String, String, String, Throwable] =
+    val s2: Schema[String, String, String] =
       Schema(
         Map("t0" -> Shape.empty.copy(rbe = Symbol(((DirectEdge("a"), Ref("t0"))), 1, 1)),
           "t1" -> Shape.empty.copy(rbe = And(Symbol(((DirectEdge("b"), Ref("t2"))), 1, 1), Symbol(((DirectEdge("c"), Ref("t3"))), 1, 1))),
@@ -108,7 +108,7 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
   }
     
   describe("Basic matchings") {
-      val s : Schema[String,String,String,Err] = 
+      val s : Schema[String,String,String] = 
         Schema(Map("s" -> Shape.empty.copy(rbe = Symbol(((DirectEdge("a"), integer)), 1, 1))),
         Seq())
       val typing = PosNegTyping.fromPosMap(Map("x" -> Set("s")))
@@ -138,7 +138,7 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
   }
   
   describe("Basic matchings with plus") {
-      val s : Schema[String,String,String,Err] = 
+      val s : Schema[String,String,String] = 
         Schema(Map("s" -> Shape.empty.copy(rbe = Plus(Symbol((DirectEdge("a"), integer), 1, 1)))),
         Seq())
       val typing = PosNegTyping.fromPosMap(Map("x" -> Set("s")))
@@ -176,7 +176,7 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
     }
 
   ignore("Matching with Or --- single one to ignore and check this case with more detail later") {
-      val s : Schema[String,String,String,Err] = 
+      val s : Schema[String,String,String] = 
         Schema(Map("s" -> Shape.empty.copy(rbe = Or(
             Symbol(((DirectEdge("a"), one)), 1, 1),
             Symbol(((DirectEdge("b"), one)), 1, 1)))),
@@ -191,7 +191,7 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
     
   }
   describe("Basic matchings with Or") {
-      val s : Schema[String,String,String,Err] = 
+      val s : Schema[String,String,String] = 
         Schema(Map("s" -> Shape.empty.copy(rbe = Or(
             Symbol(((DirectEdge("a"), one)), 1, 1),
             Symbol(((DirectEdge("b"), one)), 1, 1)))),
@@ -237,7 +237,7 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
       Map("n0" -> List(("a", "n1")),
           "n1" -> List(("b", "n1"), ("c", "n2"))))
 
-    val s: Schema[String, String, String, Throwable] =
+    val s: Schema[String, String, String] =
       Schema(
         Map("t0" -> Shape.empty.copy(rbe = Symbol(((DirectEdge("a"), Ref("t1"))), 1, 1)),
           "t1" -> Shape.empty.copy(rbe = And(Symbol(((DirectEdge("b"), Ref("t2"))), 1, 1), Symbol(((DirectEdge("c"), Ref("t3"))), 1, 1))),
@@ -263,11 +263,11 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
   }
 
   
-    def matchesNodeLabel[Edge, Node, Label,Err](
+    def matchesNodeLabel[Edge, Node, Label](
       n: Node,
       l: Label,
       g: Graph[Edge, Node],
-      s: Schema[Edge, Node, Label,Err], 
+      s: Schema[Edge, Node, Label], 
       t: Seq[(PosNegTyping[Node, Label],Set[(Node,Edge,Node)])]): Unit = {
       val matcher = IterativeMatcher(s,g)
       it(s"Matches node $n with label $l in graph ${g} and schema ${s}") {
@@ -275,11 +275,11 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
       }
     }
     
-    def noMatchNodeLabel[Edge, Node, Label,Err](
+    def noMatchNodeLabel[Edge, Node, Label](
       n: Node,
       l: Label,
       g: Graph[Edge, Node],
-      s: Schema[Edge, Node, Label,Err]): Unit = {
+      s: Schema[Edge, Node, Label]): Unit = {
       val matcher = IterativeMatcher(s,g)
       it(s"Doesn't match node $n with label $l in graph ${g} and schema ${s}") {
         val result = matcher.matchNode(n, l) 

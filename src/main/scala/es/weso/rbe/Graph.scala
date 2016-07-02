@@ -5,6 +5,8 @@ package es.weso.rbe
  */
 trait Graph[Edge,Node] {
   
+  type Neighs_ = Seq[Neigh[Edge,Node]]
+  
   /**
    * List of nodes
    */
@@ -25,6 +27,12 @@ trait Graph[Edge,Node] {
    */
   def triples: Seq[(Node,Edge,Node)]
   
+  def neighbours(node: Node): Neighs_ = {
+    val outs: Neighs_ = out(node).map{ case (edge,node) => Direct(edge,node) }
+    val ins: Neighs_ = in(node).map{ case (edge,node) => Inverse(edge,node) }
+    outs ++ ins
+  }
+
 }
 
 /**
