@@ -2,7 +2,7 @@ package es.weso.typing
 
 import org.scalatest._
 import es.weso.collection._
-import es.weso.rbe.Interval._
+import es.weso.rbe.interval.Interval._
 import util.Success
 
 class TypingTest extends FunSpec with Matchers with TryValues {

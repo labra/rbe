@@ -6,6 +6,7 @@ import es.weso.validating._
 import es.weso.collection.Bag
 import es.weso.utils.SeqUtils._
 import es.weso.utils.TryUtils._
+import es.weso.rbe.interval._
 import es.weso.rbe._
 
 case class IterativeMatcher[Edge,Node,Label](
@@ -191,11 +192,16 @@ case class IterativeMatcher[Edge,Node,Label](
       rbe: Rbe[ConstraintRef], 
       open: Boolean,
       extras: Seq[DirectedEdge[Edge]]): Boolean = {
-    ConsoleDebugger.debugStep(s"--Checking candidate: $cs with sorbe: $rbe. Bag: ${candidatesToBag(cs)}. Interval: ${rbe.interval(candidatesToBag(cs))}")
-    val b = !containsContradictions(cs,extras) && 
-            rbe.containsWithRepeats(candidatesToBag(cs),open)
-    ConsoleDebugger.debugStep(s"--Result of checking candidate $cs with $rbe = $b")
-    b
+    val bag = candidatesToBag(cs)
+    ConsoleDebugger.debugStep(s"--Checking candidate: $cs. rbe: $rbe. Bag: $bag, open: $open, extras: $extras")
+    val intervalChecker = IntervalChecker(rbe)
+    if (containsContradictions(cs,extras)) false
+    else {
+     val checked = intervalChecker.check(bag,open)
+     ConsoleDebugger.debugStep(s"--Result of checking candidate $cs with $rbe = $checked")
+     checked.isOK
+    }
+    
   }
   
   // TODO: The following code could be optimized using some mathematical formula
@@ -205,7 +211,7 @@ case class IterativeMatcher[Edge,Node,Label](
       cs: Seq[Candidate_],
       extras: Seq[DirectedEdge[Edge]]): Boolean = {
     val noExtras = cs.filter(c => !(extras contains c.edge))
-    val pos = noExtras.filter(_.sign == 1).map(_.value)
+    // val pos = noExtras.filter(_.sign == 1).map(_.value)
     val neg = noExtras.filter(_.sign == -1).map(_.value)
     //    pos.intersect(neg).length != 0
     neg.length != 0

@@ -83,6 +83,10 @@ trait Bag[A] {
 
 object Bag {
   
+  def apply[A: Ordering](as: A*): Bag[A] = {
+    Bag.toBag(as.toList)
+  }
+  
   def empty[A: Ordering]: Bag[A] =
     BagSortedMap(SortedMap[A, Int]())
 

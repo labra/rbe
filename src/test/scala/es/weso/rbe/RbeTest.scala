@@ -2,11 +2,13 @@ package es.weso.rbe
 
 import org.scalatest._
 import es.weso.collection._
-import es.weso.rbe.Interval._
+import es.weso.rbe.interval._
+import Interval._
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Prop._
 import org.scalatest.prop.Checkers
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
+import es.weso.rbe.deriv._
 import org.scalacheck._
 
 class RbeTest extends FunSpec with Matchers with GeneratorDrivenPropertyChecks {
@@ -239,31 +241,35 @@ class RbeTest extends FunSpec with Matchers with GeneratorDrivenPropertyChecks {
 
   def matchBag[A](rbe: Rbe[A], bag: Bag[A], open: Boolean = true) = {
     it(s"${rbe} should match ${bag}. Open: $open") {
-      rbe.matchDeriv(bag, open) should be(true)
+      val checker = DerivChecker(rbe)
+      checker.check(bag, open).isOK should be(true)
     }
   }
 
   def noMatchBag[A](rbe: Rbe[A], bag: Bag[A], open: Boolean = true) = {
     it(s"${rbe} should not match ${bag}. Open: $open") {
-      rbe.matchDeriv(bag, open) should be(false)
+      val checker = DerivChecker(rbe)
+      checker.check(bag, open).isOK should be(false)
     }
   }
 
   def equalInterval[A](rbe: Rbe[A], bag: Bag[A], expected: Interval) = {
     it(s"Interval of ${bag} with ${rbe} should be ${expected}") {
-      rbe.interval(bag) should be(expected)
+      IntervalChecker.interval(rbe,bag) should be(expected)
     }
   }
 
   def containsBag[A](rbe: Rbe[A], bag: Bag[A], open: Boolean = true) = {
     it(s"${rbe} should contain ${bag}. Open: $open") {
-      rbe.containsWithRepeats(bag, open) should be(true)
+      val checker = IntervalChecker(rbe)
+      checker.check(bag, open).isOK should be(true)
     }
   }
 
   def notContainsBag[A](rbe: Rbe[A], bag: Bag[A], open: Boolean = true) = {
     it(s"${rbe} should not contain ${bag}, Open: $open") {
-      rbe.containsWithRepeats(bag, open) should be(false)
+      val checker = IntervalChecker(rbe)
+      checker.check(bag, open).isOK should be(false)
     }
   }
 

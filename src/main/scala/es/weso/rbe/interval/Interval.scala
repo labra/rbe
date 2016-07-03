@@ -1,13 +1,7 @@
-package es.weso.rbe
+package es.weso.rbe.interval
 
-
-import math.{ 
-  max => intMax, 
-  min => intMin,
-  ceil, floor
-  }
-import scalaz._
-import IntOrUnbounded._ // Imports implicits to convert Int to IntLimit
+import IntOrUnbounded._
+import cats.Show
 
 case class IntervalsException(msg:String) 
    extends Exception(msg)
@@ -53,7 +47,7 @@ case class Interval(n: IntOrUnbounded, m: IntOrUnbounded) {
  }
 
  implicit def limitShow: Show[IntOrUnbounded] = {
-    Show.shows(_.show) 
+    Show.show(_.show) 
   }
 
  override def toString = show

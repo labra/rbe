@@ -1,14 +1,11 @@
-package es.weso.rbe
+package es.weso.rbe.interval
 
-
-import math.{ 
-  max => intMax, 
-  min => intMin,
-  ceil, floor
-  }
+import math.{max => intMax, min => intMin}
 import cats._
 import cats.implicits._
 import org.scalactic._
+import scala.math.{max => intMax}
+import scala.math.{min => intMin}
 
 case class IntOrUnboundedException(msg:String) 
    extends Exception("IntOrUnbounded: " + msg)

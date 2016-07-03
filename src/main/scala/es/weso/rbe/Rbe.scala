@@ -1,10 +1,10 @@
 package es.weso.rbe
 
 import es.weso.collection._
-import Interval._
-import IntOrUnbounded._
+import interval._
 import es.weso.utils._
-
+import IntOrUnbounded._
+import Interval._
 
 /**
  * This trait defines Single Occurrence Regular Bag Expressions (Rbe)
@@ -21,114 +21,9 @@ import es.weso.utils._
 sealed trait Rbe[+A] {
   
   /**
-   * Calculates the interval of a bag from a RBE
-   * 
-   * The following code follows page 11 of
-   * [http://labra.github.io/ShExcala/papers/staworko-icdt15a.pdf]
-   * 
-   */
-  def interval[U >: A](bag: Bag[U]): Interval = {
-    this match {
-      
-      case Fail(_) => Interval(1,0)
-      
-      case Empty => Interval(0,Unbounded)
-      
-      case Symbol(a,n,m) => {
-        val wa = bag.multiplicity(a)
-        Interval(divIntLimitUp(wa, m),divIntLimitDown(wa,n))
-      }
-      
-      case And(v1,v2) => v1.interval(bag) & v2.interval(bag)
-      
-      case Or(v1,v2) => v1.interval(bag) + v2.interval(bag)
-      
-      case Star(v) => {
-        if (noSymbolsInBag(bag)) Interval(0,Unbounded)
-        else {
-         val ie = v.interval(bag) 
-         if (ie.isEmpty) ie
-         else Interval(1,Unbounded)
-        }
-      }
-      
-      case Plus(v) => {
-        if (noSymbolsInBag(bag)) Interval(0,0)
-        else {
-         val ie = v.interval(bag) 
-         if (ie.isEmpty) ie
-          else Interval(1,ie.m) 
-        }
-      } 
-      
-      // Adding Repetitions on expressions breaks the single-occurrence bag expression
-      // This case is handled by detecting repetitions and invoking the derivatives algorithm
-      case Repeat(v,n,m) =>
-         throw RbeException("Intervals algorithm doesn't work with repetitions. RBE expr: " + this)  
-      // We tried:        v.repeatInterval(n,m,bag) */
-      
-      case _ => throw RbeException("interval: unsupported expr " + this)  
-    }
-  }
-  
-  // TODO: The following recursive code is not optimized. 
-  // It could be done tailrec although it may be better to find a mathematical formula
-  /*def repeatInterval[U >: A](n: Int, m: IntOrUnbounded, bag: Bag[U]): Interval = {
-    (n,m) match {
-      case (0, IntLimit(0)) => Interval(0,Unbounded)
-      case (0, IntLimit(m)) => (Or(this,Empty)).interval(bag) & this.repeatInterval(0,IntLimit(m-1),bag)
-      case (n, IntLimit(m)) if n > 0 && m >= n => this.interval(bag) & this.repeatInterval(n-1,IntLimit(m-1),bag)
-      case (0, Unbounded) => Star(this).interval(bag)
-      case (n, Unbounded) if n > 0 => this.interval(bag) & this.repeatInterval(n-1,Unbounded,bag)
-      case _ => throw RbeException(s"repeatInterval. Unsupported cardinality: ($n,$m)")
-    }
-  } */
-
-  private lazy val symbols: Seq[A] = {
-    this match {
-      case Fail(_) => List()
-      case Empty => List()
-      case Symbol(a,_,_) => List(a)
-      case And(v1,v2) => v1.symbols union v2.symbols
-      case Or(v1,v2) => v1.symbols union v2.symbols
-      case Star(v) => v.symbols
-      case Plus(v) => v.symbols
-      case Repeat(v,_,_) => v.symbols
-      case _ => throw RbeException(s"symbols: unexpected Rbe expression ${this}") 
-    }
-  }
-  
-  private def noSymbolsInBag[U >: A](bag: Bag[U]): Boolean = {
-    this.symbols.forall(x => bag.multiplicity(x) == 0)
-  }
-  
-  private def bagHasExtraSymbols[U >: A](bag: Bag[U]): Boolean = {
-    bag.elems.exists{ case (s,_) => !this.symbols.contains(s) }
-  }
-
-  
-  private def contains[U >: A](bag: Bag[U], open: Boolean): Boolean = {
-    if (!open && bagHasExtraSymbols(bag)) false 
-    else this.interval(bag).contains(1) 
-  }
-  
-  /**
-   * Checks if a bag is matched by this RBE
-   * 
-   * @param bag bag to check if matches with current RBE
-   * @param open allows extra symbols
-   */
-  def containsWithRepeats[U >: A](bag: Bag[U], open: Boolean): Boolean = {
-    if (containsRepeats) 
-      matchDeriv(bag,open)
-    else
-      contains(bag,open)
-  }
-  
-  /**
    * Checks if a RBE contains repetitions 
    */
-  private def containsRepeats: Boolean = {
+  lazy val containsRepeats: Boolean = {
     this match {
       case Fail(_) => false
       case Empty => false
@@ -141,14 +36,21 @@ sealed trait Rbe[+A] {
     }
   }
 
-  /**
-   * Match a RBE with a bag using the derivatives algorithm
-   * open: allows extra symbols to match
-   */
-  def matchDeriv[U >: A](bag: Bag[U], open: Boolean): Boolean = {
-    val d = this.derivBag(bag,open,symbols)
-    if (d.nullable) true
-    else false
+  lazy val symbols: Seq[A] = {
+    this match {
+      case Fail(_) => List()
+      case Empty => List()
+      case Symbol(a,_,_) => List(a)
+      case And(v1,v2) => v1.symbols union v2.symbols
+      case Or(v1,v2) => v1.symbols union v2.symbols
+      case Star(v) => v.symbols
+      case Plus(v) => v.symbols
+      case Repeat(v,_,_) => v.symbols
+    }
+  }
+  
+  def noSymbolsInBag[U >: A](bag: Bag[U]): Boolean = {
+    this.symbols.forall(x => bag.multiplicity(x) == 0)
   }
   
   /**
@@ -170,7 +72,7 @@ sealed trait Rbe[+A] {
   /**
    * Checks if a rbe is nullable
    */
-  private def nullable: Boolean = {
+  def nullable: Boolean = {
     this match {
       case Fail(_) => false
       case Empty => true
@@ -224,8 +126,8 @@ sealed trait Rbe[+A] {
 
   private def mkOr[A](r1: => Rbe[A], r2: => Rbe[A]): Rbe[A]= {
     val r = (r1, r2) match {
-      case (f @ Fail(_), e2) => e2
-      case (e1, f @ Fail(_)) => e1
+      case (Fail(_), e2) => e2
+      case (e1, Fail(_)) => e1
       case (e1, e2) =>
         if (e1 == e2) e1
         else Or(e1, e2)
@@ -240,14 +142,14 @@ sealed trait Rbe[+A] {
   private def derivSymbol[U >: A](x: U, s: Symbol[U], open: Boolean, controlled: Seq[U]): Rbe[U] = {
     if (x == s.a) {
       if (s.m == IntLimit(0)) 
-        Fail(s"Symbol $x doesn't match $s")
+        Fail(s"Found $x but max. cardinality is 0. Current deriv: $s")
       else 
         mkRangeSymbol(s.a, math.max(s.n - 1, 0), s.m minusOne)
     } 
     else if (open && !(controlled contains x)) {
       this
     } else {
-      Fail(s"$x doesn't match $s")
+      Fail(s"symbol: Unexpected $x doesn't match $s. open: $open, controlled: $controlled")
     }
   }
 
@@ -264,7 +166,7 @@ sealed trait Rbe[+A] {
         if (open && !(controlled contains x)) 
           Empty
         else 
-          Fail(s"Unexpected symbol $x") 
+          Fail(s"Unexpected $x doesn't match empty, open: $open, controlled: $controlled") 
       case s@Symbol(a,m,n) => {
        derivSymbol(x,s,open,controlled)
       }  

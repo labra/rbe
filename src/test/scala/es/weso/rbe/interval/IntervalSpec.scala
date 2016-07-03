@@ -1,9 +1,11 @@
-package es.weso.rbe
+package es.weso.rbe.interval
 
 import org.scalacheck._
-import Prop._
-import Gen._
+import org.scalacheck.Prop._
+import org.scalacheck.Gen._
 import es.weso.collection._
+import es.weso.rbe._
+import IntOrUnbounded.int2LimitInt
 
 object IntervalSpec extends Properties("Intervals") {
   
@@ -65,7 +67,7 @@ object IntervalSpec extends Properties("Intervals") {
   property("letter in range") = forAll(letter)(l => condition(l))
   property("intervals I(E)") = 
     forAll(rbe,bag)((e,bag) => {
-        e.interval(bag).m >= 0 
+      IntervalChecker.interval(e,bag).m >= 0 
     })
 
   /* TODO: Check if the following property should hold
