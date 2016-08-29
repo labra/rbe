@@ -1,4 +1,4 @@
-package es.weso.rbe.matcher
+package es.weso.rbe
 
 /**
  * @param value reference value of this constraint 

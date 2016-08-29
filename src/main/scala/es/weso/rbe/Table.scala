@@ -1,7 +1,4 @@
-package es.weso.rbe.matcher
-
-import es.weso.rbe.DirectedEdge
-import es.weso.rbe.NodeShape
+package es.weso.rbe
 
 /**
  * 

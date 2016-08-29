@@ -1,17 +1,16 @@
 package es.weso.rbe.interval
 
+import org.scalatest._
+import org.scalatest.prop._
 import org.scalacheck._
 import org.scalacheck.Prop._
 import org.scalacheck.Gen._
 import es.weso.collection._
 import es.weso.rbe._
 import IntOrUnbounded.int2LimitInt
+import es.weso.rbe.deriv._
 
-object IntervalSpec extends Properties("Intervals") {
-  
-  val letter = Gen.oneOf('a','b','c','d','e')
-  
-  val bag : Gen[Bag[Char]] = Gen.containerOf[List,Char](letter).map(x => Bag.toBag(x))
+trait GenRbe extends GenBag {
   
   // Generates a controlled set of cardinalities
   val genCard: Gen[(Int,Int)] = Gen.oneOf(
@@ -19,7 +18,7 @@ object IntervalSpec extends Properties("Intervals") {
   )
   
   def genEmpty : Gen[Rbe[Char]] = 
-    const(Empty)
+    Gen.const(Empty)
     
   def genSymbol : Gen[Rbe[Char]] = for {
     (m,n) <- genCard
@@ -44,11 +43,11 @@ object IntervalSpec extends Properties("Intervals") {
     v <- genRbe(level)
   } yield Star(v)
   
-  def genRbe(level:Int) = 
-    if (level >= 5) oneOf(genEmpty, genSymbol)
+  def genRbe(level:Int) : Gen[Rbe[Char]] = 
+    if (level >= 5) Gen.oneOf(genEmpty, genSymbol)
     else {
       val newLevel = level + 1
-      oneOf(genEmpty, 
+      Gen.oneOf(genEmpty, 
           genSymbol, 
           genAnd(newLevel), 
           genOr(newLevel), 
@@ -57,6 +56,17 @@ object IntervalSpec extends Properties("Intervals") {
     }
   
   def rbe : Gen[Rbe[Char]] = genRbe(0)
+
+}
+
+class IntervalSpec 
+ extends PropSpec 
+ with GenRbe 
+ with Matchers 
+ with PropertyChecks {
+  
+  
+  def open : Gen[Boolean] = Gen.oneOf(true,false)
   
   def condition(c:Char) = c >= 'a' 
 
@@ -64,21 +74,16 @@ object IntervalSpec extends Properties("Intervals") {
 
   val propSmallInteger = Prop.forAll(smallInteger)(n => n >= 0 && n <= 100)
     
-  property("letter in range") = forAll(letter)(l => condition(l))
-  property("intervals I(E)") = 
-    forAll(rbe,bag)((e,bag) => {
+  property("letter in range") {
+    forAll(letter)(l => condition(l))
+  }
+  
+  property("intervals I(E)") { 
+    forAll(rbe,bagOfCharFromContainer)((e,bag) => {
       IntervalChecker.interval(e,bag).m >= 0 
     })
-
-  /* TODO: Check if the following property should hold
-  property("intervals I(E+) == I(E) + I(E*) ") = 
-    forAll(rbe,bag)((e,bag) => {
-      println("bag =" + bag)
-      println("e =" + e)
-      println("I(e+)=" + Plus(e).interval(bag))
-      println("I(e)=" + e.interval(bag))
-      println("I(e*)=" + Star(e).interval(bag))
-      Plus(e).interval(bag) == e.interval(bag) + Star(e).interval(bag)
-    }) */
+  }
 
 }
+
+//object IntervalSpec extends IntervalSpec

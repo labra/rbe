@@ -1,23 +1,36 @@
 import sbt._
 import sbt.Keys._
 
-lazy val rbe = project.in(file("."))
+
+lazy val propTest = config("prop") extend (Test)
+
+lazy val rbe = project.in(file(".")).
+  configs(propTest).
+  settings(publishSettings:_*).
+  settings(inConfig(propTest)(Defaults.testSettings): _*)
+  
 
 organization := "es.weso"
 
 name := "rbe"
 
-version := "0.0.9"
+version := "0.0.10"
 
 scalaVersion := "2.11.8"
+
+// crossScalaVersions := Seq("2.11.8", "2.12.0-M5")
 
 publishMavenStyle := true
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %%% "scalatest" % "3.0.0-M15" 
-, "org.typelevel" %% "cats" % "0.6.0-M1"
+  compilerPlugin("org.spire-math" %% "kind-projector"   % "0.8.0")
+, compilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full)
+, compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
+, "org.scalatest" %%% "scalatest" % "2.2.6" % "test"
+, "org.scalactic" %% "scalactic" % "2.2.6"  
+, "org.typelevel" %% "cats" % "0.7.0"
 , "es.weso" % "weso_utils_2.11" % "0.0.15" 
-, "es.weso" % "validating_2.11" % "0.0.12" 
+, "es.weso" % "validating_2.11" % "0.0.16" 
 )
 
 bintrayRepository in bintray := "weso-releases"
@@ -39,7 +52,7 @@ site.includeScaladoc()
 
 ghpages.settings
 
-git.remoteRepo := "git@github.com:labra/validating.git"
+git.remoteRepo := "git@github.com:labra/rbe.git"
 
 lazy val publishSettings = Seq(
   homepage := Some(url("https://github.com/labra/rbe")),
@@ -57,9 +70,18 @@ lazy val publishSettings = Seq(
     </developers>
   ),
   scalacOptions in (Compile,doc) ++= Seq(
-    "-Xfatal-warnings",
-    "-doc-source-url", scmInfo.value.get.browseUrl + "/tree/master€{FILE_PATH}.scala",
-    "-sourcepath", baseDirectory.in(LocalRootProject).value.getAbsolutePath,
-    "-diagrams"
+      "-language:existentials"
+    , "-language:higherKinds"
+    , "-language:implicitConversions"
+    , "-unchecked"
+    , "-Xfatal-warnings"
+    , "-Xlint"
+    , "-Yno-adapted-args"
+    , "-Ywarn-dead-code"
+    , "-Ywarn-numeric-widen"
+    , "-Ywarn-value-discard"
+    , "-doc-source-url", scmInfo.value.get.browseUrl + "/tree/master€{FILE_PATH}.scala"
+    , "-sourcepath", baseDirectory.in(LocalRootProject).value.getAbsolutePath
+    , "-diagrams"
   )
 )

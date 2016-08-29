@@ -33,7 +33,7 @@ trait IntOrUnbounded {
   
   def hasLimit = !isUnbounded
   
-  def getLimit: Int
+  def getLimit: Option[Int]
   
   def max(other: => IntOrUnbounded): IntOrUnbounded = {
     this match { 
@@ -103,8 +103,7 @@ case object Unbounded extends IntOrUnbounded {
   def minusOne: IntOrUnbounded = 
     Unbounded    
     
-  def getLimit = 
-    throw IntervalsException("Cannot get limit of Unbounded value")
+  def getLimit: Option[Int] = None 
   
 }
 
@@ -117,10 +116,10 @@ case class IntLimit(m: Int) extends IntOrUnbounded with Requirements {
   
   def isUnbounded = false
   
-  def +(other: =>IntOrUnbounded): IntOrUnbounded = {
-    if (other.hasLimit) 
-      IntLimit(m + other.getLimit)
-    else Unbounded
+  def +(other: =>IntOrUnbounded): IntOrUnbounded = 
+   other.getLimit match {
+    case None => Unbounded
+    case Some(n) => IntLimit(m + n)
   }
   
   def minusOne: IntOrUnbounded = {
@@ -129,7 +128,7 @@ case class IntLimit(m: Int) extends IntOrUnbounded with Requirements {
   }
     
     
-  def getLimit:Int = m
+  def getLimit:Option[Int] = Some(m)
 }
 
 object IntOrUnbounded {
@@ -158,7 +157,7 @@ object IntOrUnbounded {
       case (0,_) => _0
       case (n,Unbounded) => _1
       case (n,IntLimit(0)) => Unbounded
-      case (n,IntLimit(m)) => divIntDown(x,y.getLimit) 
+      case (n,IntLimit(m)) => divIntDown(x,m) 
     }
   }
 
@@ -167,7 +166,7 @@ object IntOrUnbounded {
        case (0,_) => _0
        case (n,Unbounded) => _1
        case (n,IntLimit(0)) => Unbounded
-       case (n,IntLimit(m)) => divIntUp(x,y.getLimit) 
+       case (n,IntLimit(m)) => divIntUp(x,m) 
      }
   }
    

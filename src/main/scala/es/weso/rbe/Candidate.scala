@@ -1,13 +1,13 @@
-package es.weso.rbe.matcher
+package es.weso.rbe
 
-import es.weso.validating.ConstraintError
+// import es.weso.validating.ConstraintError
 import es.weso.rbe.DirectedEdge
 import es.weso.rbe.NodeShape
 
 /**
  * A candidate to match
  */
-trait Candidate[Edge,+Node,+Label] {
+trait Candidate[Edge,+Node,+Label,Err,Evidence] {
   def sign : Int
   def value: ConstraintRef
   def isPending: Boolean
@@ -17,10 +17,10 @@ trait Candidate[Edge,+Node,+Label] {
 /**
  * A positive candidate
  */
-case class Pos[Edge,Node](
+case class Pos[Edge,Node,Err,Evidence](
     ref : ConstraintRef, 
     arc: (Node,Edge,Node),
-    edge: DirectedEdge[Edge]) extends Candidate[Edge,Node,Nothing] {
+    edge: DirectedEdge[Edge]) extends Candidate[Edge,Node,Nothing,Err,Evidence] {
   def sign = 1
   def value = ref
   def isPending = false
@@ -33,12 +33,12 @@ case class Pos[Edge,Node](
 /**
  * A candidate that is pending 
  */
-case class Pending[Edge,Node,Label](
+case class Pending[Edge,Node,Label,Err,Evidence](
     n : ConstraintRef, 
     node: Node, 
     ref: Label,
     arc:(Node,Edge,Node),
-    edge: DirectedEdge[Edge]) extends Candidate[Edge,Node,Label] {
+    edge: DirectedEdge[Edge]) extends Candidate[Edge,Node,Label,Err,Evidence] {
   def sign = 1
   def value = n
   def isPending = true
@@ -48,12 +48,12 @@ case class Pending[Edge,Node,Label](
   }
 }
 
-case class PendingNot[Edge,Node,Label](
+case class PendingNot[Edge,Node,Label,Err,Evidence](
     n : ConstraintRef, 
     node: Node, 
     ref: Label,
     arc:(Node,Edge,Node),
-    edge: DirectedEdge[Edge]) extends Candidate[Edge,Node,Label] {
+    edge: DirectedEdge[Edge]) extends Candidate[Edge,Node,Label,Err,Evidence] {
   def sign = 1
   def value = n
   def isPending = true
@@ -63,12 +63,12 @@ case class PendingNot[Edge,Node,Label](
   }
 }
 
-case class PendingSeq[Edge,Node,Label](
+case class PendingSeq[Edge,Node,Label,Err,Evidence](
     n : ConstraintRef, 
     node: Node, 
     ref: Seq[Label],
     arc:(Node,Edge,Node),
-    edge: DirectedEdge[Edge]) extends Candidate[Edge,Node,Label] {
+    edge: DirectedEdge[Edge]) extends Candidate[Edge,Node,Label,Err,Evidence] {
   def sign = 1
   def value = n
   def isPending = true
@@ -78,12 +78,12 @@ case class PendingSeq[Edge,Node,Label](
   }
 }
 
-case class PendingAlt[Edge,Node,Label](
+case class PendingAlt[Edge,Node,Label,Err,Evidence](
     n : ConstraintRef, 
     node: Node, 
     ref: Seq[Label],
     arc:(Node,Edge,Node),
-    edge: DirectedEdge[Edge]) extends Candidate[Edge,Node,Label] {
+    edge: DirectedEdge[Edge]) extends Candidate[Edge,Node,Label,Err,Evidence] {
   def sign = 1
   def value = n
   def isPending = true
@@ -93,12 +93,12 @@ case class PendingAlt[Edge,Node,Label](
   }
 }
 
-case class PendingOr[Edge,Node,Label](
+case class PendingOr[Edge,Node,Label,Err,Evidence](
     n : ConstraintRef, 
     node: Node, 
-    es: Seq[NodeShape[Label,Node]],
+    es: Seq[NodeShape[Label,Node,Err,Evidence]],
     arc:(Node,Edge,Node),
-    edge: DirectedEdge[Edge]) extends Candidate[Edge,Node,Label] {
+    edge: DirectedEdge[Edge]) extends Candidate[Edge,Node,Label,Err,Evidence] {
   def sign = 1
   def value = n
   def isPending = true
@@ -111,11 +111,11 @@ case class PendingOr[Edge,Node,Label](
 /**
  * A negative candidate
  */
-case class Neg[Edge,Node](
+case class Neg[Edge,Node,Err,Evidence](
     n : ConstraintRef,
     arc:(Node,Edge,Node),
     edge: DirectedEdge[Edge],
-    errors: Seq[ConstraintError[Node]]) extends Candidate[Edge,Node,Nothing] {
+    errors: Seq[Err]) extends Candidate[Edge,Node,Nothing,Error,Evidence] {
   def sign = -1
   def value = n
   def isPending = false
@@ -128,11 +128,11 @@ case class Neg[Edge,Node](
 /**
  * A missing candidate
  */
-case class Missing[Edge,Node](
+case class Missing[Edge,Node,Err,Evidence](
    n: ConstraintRef, 
    arc: (Node,Edge,Node),
    edge: DirectedEdge[Edge]   
-   ) extends Candidate[Edge,Node,Nothing] {
+   ) extends Candidate[Edge,Node,Nothing,Err,Evidence] {
   def sign = -1
   def value = n
   def isPending = false

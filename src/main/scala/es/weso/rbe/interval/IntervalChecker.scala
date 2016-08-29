@@ -1,25 +1,29 @@
 package es.weso.rbe.interval
 import es.weso.rbe._
-import es.weso.validating._
-import Constraint._
 import es.weso.collection._
-import Interval._
 import IntOrUnbounded._
 import es.weso.rbe.deriv._
 
 case class IntervalChecker[A](rbe: Rbe[A]) extends BagChecker[A] {
   
+  type Matched[B] = Either[String,B]
+ 
   lazy val derivChecker = DerivChecker(rbe)
   
-  def check(bag:Bag[A], open: Boolean): Checked[Bag[A],ConstraintReason,ConstraintError[Bag[A]]] = {
+  def check(bag:Bag[A], open: Boolean): 
+        Matched[Bag[A]] = {
     if (rbe.containsRepeats) {
       derivChecker.check(bag,open)
     } else {
        if (!open && extraSymbols(bag).isEmpty == false) 
-         errString(s"Closed expression $rbe will not match with bag $bag because it contains extra symbols ${extraSymbols(bag)}") 
+         Left(s"$rbe doesn't match bag $bag. Open: $open, Extra symbols: ${extraSymbols(bag)}") 
        else 
-         if (IntervalChecker.interval(rbe,bag).contains(1)) okSingle(bag,s"$rbe ~ $bag")
-         else derivChecker.check(bag,open)
+         if (IntervalChecker.interval(rbe,bag).contains(1)) 
+           Right(bag)
+         else 
+           Left(s"$rbe doesn't match bag $bag. Open: $open, Extra symbols: ${extraSymbols(bag)}")
+           // Question: I had this:
+           // derivChecker.check(bag,open)  
     }
   }
   

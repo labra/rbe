@@ -6,6 +6,6 @@ trait BagChecker[A] {
   
   def rbe: Rbe[A]
 
-  def check(bag:Bag[A], open: Boolean): Checked[Bag[A],ConstraintReason,ConstraintError[Bag[A]]]
+  def check(bag:Bag[A], open: Boolean): Either[String,Bag[A]]
 
 }

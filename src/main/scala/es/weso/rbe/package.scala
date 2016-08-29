@@ -1,5 +1,8 @@
 package es.weso
-
+import cats._, data._
+import implicits._
+import es.weso.utils.Read
+import es.weso.utils.Read.ops._
   /**
    * Implementation of Regular Bag Expressions.
    * 
@@ -13,6 +16,5 @@ package es.weso
    *   
    */
 package object rbe {
-  
   
 }

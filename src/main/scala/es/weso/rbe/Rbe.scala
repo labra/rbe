@@ -4,7 +4,6 @@ import es.weso.collection._
 import interval._
 import es.weso.utils._
 import IntOrUnbounded._
-import Interval._
 
 /**
  * This trait defines Single Occurrence Regular Bag Expressions (Rbe)
@@ -36,6 +35,13 @@ sealed trait Rbe[+A] {
     }
   }
 
+  /**
+   * Symbols that contains this rbe
+   * 
+   * Example: {{{
+   * symbols(Or(And(Symbol("a",1,3),Symbol("b",1,1)),Symbol("b",2,3))) == Seq("a","b")
+   * }}}
+   */
   lazy val symbols: Seq[A] = {
     this match {
       case Fail(_) => List()
@@ -49,6 +55,9 @@ sealed trait Rbe[+A] {
     }
   }
   
+  /**
+   * Checks that there are no symbols in common with a bag 
+   */
   def noSymbolsInBag[U >: A](bag: Bag[U]): Boolean = {
     this.symbols.forall(x => bag.multiplicity(x) == 0)
   }
@@ -72,7 +81,7 @@ sealed trait Rbe[+A] {
   /**
    * Checks if a rbe is nullable
    */
-  def nullable: Boolean = {
+  lazy val nullable: Boolean = {
     this match {
       case Fail(_) => false
       case Empty => true
@@ -87,7 +96,7 @@ sealed trait Rbe[+A] {
   }
   
   
-   private def mkAnd[A](r1: => Rbe[A], r2: => Rbe[A]): Rbe[A]= {
+   private def mkAnd[U >: A](r1: => Rbe[U], r2: => Rbe[U]): Rbe[U]= {
     val r = (r1, r2) match {
       case (Empty, e2) => e2
       case (e1, Empty) => e1
@@ -98,7 +107,7 @@ sealed trait Rbe[+A] {
     r
   }
    
-  private def mkRange[A](e: Rbe[A], m: Int, n: IntOrUnbounded): Rbe[A] = {
+  private def mkRange[U >: A](e: Rbe[U], m: Int, n: IntOrUnbounded): Rbe[U] = {
     if (m < 0) Fail("Range with negative lower bound = " + m)
     else if (m > n) Fail("Range with lower bound " + m + " bigger than upper bound " + n)
     else {
@@ -106,13 +115,13 @@ sealed trait Rbe[+A] {
         case (0, IntLimit(0), _) => Empty
         case (1, IntLimit(1), e) => e
         case (_, _, f @ Fail(_)) => f
-        case (_, _, e @ Empty) => e
+        case (_, _, Empty) => Empty
         case (m, n, e) => Repeat(e, m, n)
       }
     }
   }
    
-  private def mkRangeSymbol[A](x: A, m: Int, n: IntOrUnbounded): Rbe[A] = {
+  private def mkRangeSymbol[U >: A](x: U, m: Int, n: IntOrUnbounded): Rbe[U] = {
     if (m < 0) Fail("Range with negative lower bound = " + m)
     else if (m > n) Fail("Range with lower bound " + m + " bigger than upper bound " + n)
     else {
@@ -124,7 +133,7 @@ sealed trait Rbe[+A] {
     }
   }
 
-  private def mkOr[A](r1: => Rbe[A], r2: => Rbe[A]): Rbe[A]= {
+  private def mkOr[U >: A](r1: => Rbe[U], r2: => Rbe[U]): Rbe[U]= {
     val r = (r1, r2) match {
       case (Fail(_), e2) => e2
       case (e1, Fail(_)) => e1
@@ -135,7 +144,7 @@ sealed trait Rbe[+A] {
     r
   }
   
-  private def mkRepeat[A](r: => Rbe[A], m: Int, n: IntOrUnbounded): Rbe[A]= {
+  private def mkRepeat[U >: A](r: => Rbe[U], m: Int, n: IntOrUnbounded): Rbe[U]= {
     Repeat(r,m,n)
   }
   
@@ -157,7 +166,7 @@ sealed trait Rbe[+A] {
    * derivative of this RBE with regards to a symbol
    * @param x symbol
    * @param open allows extra symbols
-   * @param controlled limits the extra symbols to those that don't appear in controlled
+   * @param controlled defines the symbols that are allowed in closed expressions
    */
   def deriv[U >: A](x: U, open: Boolean, controlled: Seq[U]) : Rbe[U] = {
     this match {
@@ -194,6 +203,7 @@ sealed trait Rbe[+A] {
       }
     }
   }
+  
 } 
 
 

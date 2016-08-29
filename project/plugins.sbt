@@ -18,6 +18,8 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-site" % "0.8.2")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-ghpages" % "0.5.4")
 
+addSbtPlugin("com.etsy" % "sbt-compile-quick-plugin" % "1.1.0")
+
 // addSbtPlugin("com.artima.supersafe" % "sbtplugin" % "1.1.0-RC6")
 
 resolvers += Classpaths.sbtPluginReleases

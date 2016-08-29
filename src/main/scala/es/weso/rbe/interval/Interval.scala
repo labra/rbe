@@ -41,9 +41,13 @@ case class Interval(n: IntOrUnbounded, m: IntOrUnbounded) {
   
 
   
- private def show: String = {
-   if (m.hasLimit && n > m.getLimit) s"<empty(${n};${m})>"
-   else "[" + n.show + ";" + m.show + "]"
+ private def show: String = m.getLimit match {
+   case None => s"[${n.show};-]"
+   case Some(mlimit) => 
+     if (n > mlimit) 
+       s"<empty(${n.show};${m.show})>"
+     else 
+       s"[${n.show};${m.show}]"
  }
 
  implicit def limitShow: Show[IntOrUnbounded] = {
