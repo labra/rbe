@@ -249,14 +249,14 @@ class IntervalTest extends FunSpec with Matchers with GeneratorDrivenPropertyChe
   def matchBag[A](rbe: Rbe[A], bag: Bag[A], open: Boolean = true) = {
     it(s"${rbe} should match ${bag}. Open: $open") {
       val checker = IntervalChecker(rbe)
-      checker.check(bag, open).isOK should be(true)
+      checker.check(bag, open).isRight should be(true)
     }
   }
 
   def noMatchBag[A](rbe: Rbe[A], bag: Bag[A], open: Boolean = true) = {
     it(s"${rbe} should not match ${bag}. Open: $open") {
       val checker = IntervalChecker(rbe)
-      checker.check(bag, open).isOK should be(false)
+      checker.check(bag, open).isRight should be(false)
     }
   }
 
@@ -269,14 +269,14 @@ class IntervalTest extends FunSpec with Matchers with GeneratorDrivenPropertyChe
   def containsBag[A](rbe: Rbe[A], bag: Bag[A], open: Boolean = true) = {
     it(s"${rbe} should contain ${bag}. Open: $open") {
       val checker = IntervalChecker(rbe)
-      checker.check(bag, open).isOK should be(true)
+      checker.check(bag, open).isRight should be(true)
     }
   }
-
+  
   def notContainsBag[A](rbe: Rbe[A], bag: Bag[A], open: Boolean = true) = {
     it(s"${rbe} should not contain ${bag}, Open: $open") {
       val checker = IntervalChecker(rbe)
-      checker.check(bag, open).isOK should be(false)
+      checker.check(bag, open).isRight should be(false)
     }
   }
 

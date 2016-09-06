@@ -11,22 +11,21 @@ import CheckVal._
 trait StringGraph extends Graph[String,String] {
 }
 
-case class Err(str: String)
 
 
 object StringGraph {
 
-implicit val readErr = new Read[Err] {
-  def read(str: String) = Err(str)
+implicit val readErr = new Read[RbeError] {
+  def read(str: String) = RbeError(str)
 }
 
 implicit val readString = new Read[String] {
   def read(str: String) = str
 }
 
-  implicit def mkErr = Err
+  implicit def mkErr = RbeError
 
-  type Pred_ = Pred[String,Err,String]
+  type Pred_ = Pred[String,RbeError,String]
   /**
    * Checks a predicate on a value
    * @param x the value to check
@@ -38,7 +37,7 @@ implicit val readString = new Read[String] {
   def cond[A](x: A,
       p: A => Boolean,
       name: String)
-      (implicit ferr: String => Err): CheckVal[A,Err,String] = {
+      (implicit ferr: String => RbeError): CheckVal[A,RbeError,String] = {
     if (p(x)) ok(x,"OK")
     else errString(s"Failed condition $name on $x")
   }

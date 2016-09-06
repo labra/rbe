@@ -6,13 +6,14 @@ import es.weso.collection._
 import util._
 import es.weso.rbe._
 import StringGraph._
-import es.weso.rbe.matcher.Pos
-import es.weso.rbe.matcher.ConstraintRef
-import es.weso.rbe.matcher.Table
 
 class SchemaTest extends FunSpec with Matchers with TryValues {
+  type NodeShape_ = NodeShape[String,String,RbeErr,String]
+  type SingleShape_ = SingleShape[DirectedEdge[String], String,String]
+  type Schema_ = Schema[String, String, String, RbeErr, String]
+  type Table_ = Schema[String, String, String, RbeErr, String]
   
-  def any: NodeShape[String,String] = NodeShape.any
+  def any: NodeShape_ = NodeShape.any
   
   def ref(n: Int) = ConstraintRef(value = n)
 
@@ -24,7 +25,7 @@ class SchemaTest extends FunSpec with Matchers with TryValues {
 
     println(s"Shape = $shape")
     // S { :a int }
-    val schema: Schema[String, String, String] =
+    val schema: Schema_ =
         Schema(
             m = Map("S" -> shape),
             ignored = Seq()
@@ -32,7 +33,7 @@ class SchemaTest extends FunSpec with Matchers with TryValues {
 
     val sorbe = Symbol(ref(1), 1, 1)
 
-    val table: Table[String, String, String] = Table(
+    val table: Table_ = Table(
         constraints = Map(ref(1) -> integer),
         edges = Map(DirectEdge("a") -> Set(ref(1))),
         elems = 1)

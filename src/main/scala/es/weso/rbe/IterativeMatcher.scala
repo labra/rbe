@@ -1,274 +1,78 @@
 package es.weso.rbe
 
-import util._
-import es.weso.typing.Typing
-import es.weso.checking.Checker
-import es.weso.collection.Bag
-// import es.weso.utils.SeqUtils._
+import es.weso.typing._
+import es.weso.checking._
+import es.weso.utils.SeqUtils._
 import es.weso.rbe.interval._
+import es.weso.collection.Bag
 import cats._, data._
-import cats.implicits._
+import implicits._
 
-case class IterativeMatcher[Edge, Node, Label, Err, Evidence](
-    schema: Schema[Edge, Node, Label, Err, Evidence],
-    graph: Graph[Edge, Node]) extends Matcher[Edge, Node, Label, Err, Evidence] {
+trait IterativeMatcher[Edge, Node, Label] extends Matcher[Edge, Node, Label, String] {
 
-  // These types are specialized versions of the general types for readability
-  type RBE_ = Rbe[(DirectedEdge[Edge], NodeShape[Label, Node])]
-  type Table_ = Table[Edge, Node, Label]
-  type Schema_ = Schema[Edge, Node, Label, Err, Evidence]
+  type Evidence = String
+  type Err = RbeError
+  type Shape_ = Shape[DirectedEdge[Edge], Node, Label, RbeError, Evidence]
   type NodeShape_ = NodeShape[Node, Label, Err, Evidence]
-  type Arc_ = (Node, Edge, Node)
+  type SingleShape_ = SingleShape[DirectedEdge[Edge], Node, Label, RbeError, Evidence]
+  type Candidate_ = Candidate[Edge, Node, Label, RbeError, Evidence]
+  type Candidates_ = Seq[Candidate_]
   type Neigh_ = Neigh[Edge, Node]
   type Neighs_ = Seq[Neigh_]
-  type Candidate_ = Candidate[Edge, Node, Label]
-  type Candidates_ = Seq[Candidate_]
-  type Typing_ = Typing[Node, Label, Err, Evidence]
-  type SingleResult_ = Typing_
-  type Graph_ = Graph[Edge, Node]
+  type Table_ = Table[Edge, Node, Label, RbeError, Evidence]
+  type Triple_ = (Node, Edge, Node)
 
-  object MyChecker extends Checker {
-    type Config = Graph
-    type Env = ShapeTyping
-    /**
-     * Output from checking:
-     * - List of evidences
-     * - Set of visited triples
-     */
-    type Log = ( List[Evidence], 
-                 Set[(Node, Edge, Node)]
-    )
-    
-    implicit val envMonoid: Monoid[Env] = new Monoid[Env] {
-      def combine(e1: Env, e2: Env): Env = e1.combineTyping(e2)
-      def empty: Env = Typing.empty
-    }
-    implicit val logCanLog: CanLog[Log] = new CanLog[Log] {
-      def log(msg: String): Log = ???
-    }
-    implicit val logMonoid: Monoid[Log] = new Monoid[Log] {
-      def combine(l1: Log, l2: Log): Log = l1 ++ l2
-      def empty: Log = List()
-    }
-    
-    implicit val logShow: Show[Log] = new Show[Log] {
-      def show(l: Log): String = 
-        l.map { case (ns, msg) => s"${ns}: $msg" }.mkString("\n")
-    }
-    implicit val typingShow: Show[ShapeTyping] = new Show[ShapeTyping] {
-      def show(t: ShapeTyping): String = t.toString
-    }
-  }
-
-  type ShapeTyping = Typing[Node, Label, Err, Evidence]
-  type CheckTyping = Check[ShapeTyping]
-  type NodeChecker = Attempt => Node => CheckTyping
-  type Attempt = (Node,Label)
-
-  /**
-   * Given a label create a table of candidates
-   */
-  def mkTable(
-    shape: SingleShape[DirectedEdge[Edge], Node, Label, Err, Evidence]): 
-     Check[(Table_, Rbe[ConstraintRef])] = {
-    val (table, rbe) = mkTableAux(shape.rbe, Table.empty)
+  def matchNodeLabel(
+    node: Node,
+    label: Label): CheckTyping = {
+    val attempt = Attempt(node, label)
     for {
-      _ <- tell(s"Table created: table = $table\nrbe = $rbe")
-    } yield ((table, rbe))
-  }
-
-  private def mkTableAux(
-    rbe: RBE_,
-    current: Table_): (Table_, Rbe[ConstraintRef]) = {
-    rbe match {
-      case Empty => (current, Empty)
-      case Symbol((p, c), m, n) => {
-        val newElem = current.elems + 1
-        val cref = ConstraintRef(newElem)
-        val newTable = current.copy(
-          elems = newElem,
-          constraints = current.constraints + (cref -> c),
-          edges = current.addEdge(p, cref))
-        (newTable, Symbol(cref, m, n))
+      _ <- logStr(attempt, s"matchNodeLabel: $node with $label")
+      schema <- getSchema
+      t <- getTyping
+      nt <- if (t.hasType(node, label)) ok(t)
+      else schema.m.get(label) match {
+        case None        => checkErrStr(s"$label doesn't have shape associated in schema $schema")
+        case Some(shape) => matchNodeShape(node, shape, attempt)
       }
-      case And(s1, s2) => {
-        val (t1, r1) = mkTableAux(s1, current)
-        val (t2, r2) = mkTableAux(s2, t1)
-        (t2, And(r1, r2))
-      }
-      case Or(s1, s2) => {
-        val (t1, r1) = mkTableAux(s1, current)
-        val (t2, r2) = mkTableAux(s2, t1)
-        (t2, Or(r1, r2))
-      }
-      case Plus(s) => {
-        val (t, r) = mkTableAux(s, current)
-        (t, Plus(r))
-      }
-      case Star(s) => {
-        val (t, r) = mkTableAux(s, current)
-        (t, Star(r))
-      }
-      case Repeat(s, n, m) => {
-        val (t, r) = mkTableAux(s, current)
-        (t, Repeat(r, n, m))
-      }
-      case _ => throw SESchemaException(s"mkTableAux: Unsupported rbe: $rbe")
-    }
+    } yield nt
   }
 
-  private def mkArc(
-    directedEdge: DirectedEdge[Edge],
-    n1: Node, n2: Node): (Node, Edge, Node) = {
-    directedEdge match {
-      case DirectEdge(edge)  => (n1, edge, n2)
-      case InverseEdge(edge) => (n2, edge, n1)
-    }
+  def matchNodeShape(node: Node, shape: Shape_, attempt: Attempt_): CheckTyping = shape match {
+    case s: SingleShape_ =>
+      logStr(attempt, s"Matching $node with $shape") >>
+        matchNodeSingleShape(node, s, attempt)
+    case _ =>
+      checkErrStr(s"Unsupported matching of $node with complex shape $shape. Current attempt: $attempt")
   }
 
-  private def checkCandidate(
-    shape: NodeShape[Label, Node, Err, Evidence],
-    node: Node,
-    edge: DirectedEdge[Edge],
-    nodeToCheck: Node,
-    c: ConstraintRef): Candidate_ = {
-    shape match {
-      case Ref(label) =>
-        Pending(c, nodeToCheck, label, mkArc(edge, node, nodeToCheck), edge)
+  def matchNodeSingleShape(node: Node, shape: SingleShape_, attempt: Attempt_): CheckTyping = {
 
-      case RefNot(label) =>
-        PendingNot(c, nodeToCheck, label, mkArc(edge, node, nodeToCheck), edge)
+    def matchCandidates(cs: Candidates_): CheckTyping = for {
+      _ <- logStr(attempt, s"Trying to match $node with candidates $cs")
+      t <- local(_.addType(node, attempt.label,
+        List(s"$node asserted of type ${attempt.label}")))(matchNodeCandidates(node, attempt, cs))
+    } yield t
 
-      case DisjRef(labels) =>
-        PendingAlt(c, nodeToCheck, labels, mkArc(edge, node, nodeToCheck), edge)
-
-      case OrShape(vs) => {
-        PendingOr(c, nodeToCheck, vs, mkArc(edge, node, nodeToCheck), edge)
-      }
-
-      case ConjRef(labels) =>
-        PendingSeq(c, nodeToCheck, labels, mkArc(edge, node, nodeToCheck), edge)
-
-      case p: Pred[Node, Err, Evidence] => {
-        p.pred(nodeToCheck).fold(
-          (x, rs) => {
-            Pos(c, mkArc(edge, node, nodeToCheck), edge)
-          },
-          (_, es) => {
-            Neg(c, mkArc(edge, node, nodeToCheck), edge, es)
-          })
-      }
-      case _ => throw SESchemaException(s"testCandidate: unknown shape $shape")
-    }
+    for {
+      graph <- getGraph
+      val neighs = graph.neighbours(node)
+      _ <- logStr(attempt, s"Neighs of $node = $neighs")
+      val (table, sorbe) = Table.mkTable(shape)
+      _ <- logStr(attempt, s"Table: $table")
+      _ <- logStr(attempt, s"Sorbe: $sorbe")
+      val open = !shape.closed
+      candidates <- calculateCandidates(table, neighs, sorbe, node, open, shape.extras, attempt)
+      _ <- logStr(attempt, s"Candidates: $candidates")
+      t <- checkFirst(candidates.toList, matchCandidates _, errStr("No candidate matches"))
+    } yield t
   }
 
-  private def lookupEdgeConstraints(
-    table: Table_,
-    directedEdge: DirectedEdge[Edge]): Seq[ConstraintRef] = {
-    table.edges.get(directedEdge).getOrElse(Set()).toSeq
-  }
-
-  private def lookupConstraintShape(
-    table: Table_,
-    c: ConstraintRef): NodeShape_ = {
-    table.constraints.get(c) match {
-      case None =>
-        throw SESchemaException(s"Cannot find constraintRef $c in table $table")
-      case Some(nodeShape) =>
-        nodeShape
-    }
-  }
-
-  def possibleCandidates(table: Table_, node: Node, neigh: Neigh_): Candidates_ = {
-    val edge = neigh.directedEdge
-    val nodeToCheck = neigh.node
-    lookupEdgeConstraints(table, edge).map(c =>
-      checkCandidate(lookupConstraintShape(table, c), node, edge, nodeToCheck, c))
-  }
-
-  /**
-   * Calculates the candidates of a node
-   *
-   * @param table Shape table
-   * @param node node to calculate candidates
-   * @param neighs neighbours of a node
-   */
-  def candidates(table: Table_, node: Node, neighs: Neighs_): Seq[Seq[Candidate_]] = {
-    neighs.map(possibleCandidates(table, node, _))
-  }
-
-  def filterCandidates(
-    table: Table_,
-    out: Neighs_,
-    node: Node,
-    Rbe: Rbe[ConstraintRef],
-    open: Boolean,
-    extras: Seq[DirectedEdge[Edge]]): Seq[Candidates_] = {
-    val css = zipCandidates(table, node, out)
-    css.filter(cs => matchCandidateRbe(cs, Rbe, open, extras))
-  }
-
-  /*
-  private def pending(cs: Seq[Candidate_]): Seq[(Node,Label)] = {
-    cs.filter(_.isPending).
-       map{ case c => c match {
-        case Pending(c,n,l,arc,_) => (n,l)
-        case PendingSeq(c,n,ls,arc,_) => ??? // TODO: ls.map(l => (n,l))
-        case _ => throw SESchemaException(s"pending: Unexpected value: $c")
-       }}
-  }
-  
-  private def pendings(css: Seq[Candidates_]): Seq[(Node,Label)] = {
-    css.map(cs => pending(cs)).flatten
-  } */
-
-  private def matchCandidateRbe(cs: Seq[Candidate_],
-                                rbe: Rbe[ConstraintRef],
-                                open: Boolean,
-                                extras: Seq[DirectedEdge[Edge]]): Boolean = {
-    val bag = candidatesToBag(cs)
-    val intervalChecker = IntervalChecker(rbe)
-    if (containsContradictions(cs, extras)) false
-    else {
-      val checked = intervalChecker.check(bag, open)
-      checked.isOK
-    }
-
-  }
-
-  // TODO: The following code could be optimized using some mathematical formula
-  // A contradiction appears when a value N has sign -1 and another value N has sign +1
-  // allow contradictions if the predicate belongs to EXTRAs
-  private def containsContradictions(
-    cs: Seq[Candidate_],
-    extras: Seq[DirectedEdge[Edge]]): Boolean = {
-    val noExtras = cs.filter(c => !(extras contains c.edge))
-    // val pos = noExtras.filter(_.sign == 1).map(_.value)
-    val neg = noExtras.filter(_.sign == -1).map(_.value)
-    //    pos.intersect(neg).length != 0
-    neg.length != 0
-  }
-
-  // TODO: It ignores extra predicates (value None) and negative candidates by now
-  private def candidatesToBag(cs: Seq[Candidate_]): Bag[ConstraintRef] = {
-    Bag.toBag(cs.filter(_.sign == 1).map(_.value))
-  }
-
-  def zipCandidates(table: Table_, node: Node, out: Neighs_): Seq[Seq[Candidate_]] = {
-    zipN(candidates(table, node, out))
-  }
-
-  private def calculateCandidates(
-    table: Table_,
-    out: Neighs_,
-    rbe: Rbe[ConstraintRef],
-    node: Node,
-    open: Boolean,
-    extras: Seq[DirectedEdge[Edge]]): Try[Seq[Candidates_]] = {
-    Try {
-      filterCandidates(table, out, node, rbe, open, extras)
-    }
-  }
+  def matchNodeCandidates(node: Node, attempt: Attempt_, candidates: Candidates_): CheckTyping = for {
+    t <- getTyping
+    _ <- logStr(attempt, s"matching $node with candidates $candidates...?")
+    result <- resolveCandidates(candidates, node, attempt)
+  } yield result
 
   /**
    * Resolve candidate
@@ -278,24 +82,37 @@ case class IterativeMatcher[Edge, Node, Label, Err, Evidence](
    * @param c Candidate
    * @param rest current result
    */
-  private def resolveCandidate(
-    n: Node)(
-      c: Candidate_,
-      rest: Result2_): Result2_ = {
-    c match {
-      case Missing(_, _, _) => {
-        rest
-      }
-      case Pending(c, obj, label, arc, _) => rest match {
-        case Failure(e) => Failure(e)
-        case Success(results) => {
-          val rs = results.map(result => matchNodeInTyping(obj, label, result))
-          val f = filterSuccess(rs)
-          val r = f.map(t => t.flatten)
-          addArcResult2(arc, r)
-        }
-      }
+  private def resolveCandidate(n: Node, attempt: Attempt_)(c: Candidate_): CheckTyping = c match {
+    case Missing(_, _, _) => for {
+      t <- getTyping
+      _ <- logStr(attempt, "Missing candidate $c")
+    } yield t
+    case Pending(c, obj, label, arc, _) => for {
+      _ <- logStr(attempt, s"Pending candidate $c. Node $obj - Label: $label") 
+      _ <- addArc(arc)
+      t <- matchNodeLabel(obj, label)
+    } yield t
+    case Pos(ref, arc, _) => for {
+      _ <- logStr(attempt, s"Positive match $ref with arc $arc") 
+      _ <- addArc(arc) 
+      t <- getTyping
+    } yield t
+    case _                => checkErrStr(s"Unimplemented resolveCandidate $c on node $n")
+  }
 
+  def resolveCandidates(cs: Candidates_, node: Node, attempt: Attempt_): CheckTyping = for {
+    _ <- logStr(attempt,s"Resolving candidates $cs for $node")
+    ts <- checkList(cs.toList, resolveCandidate(node, attempt))
+    val t = Typing.combineTypings(ts.toSeq) 
+    _ <- logStr(attempt, s"Resulting typing $t")
+  } yield t
+
+  private def addArc(arc: Triple_): Check[Unit] = for {
+    _ <- updateInfo(_ + arc)
+  } yield (())
+
+    
+  /*
       case PendingNot(c, obj, label, arc, _) => rest match {
         case Failure(e) => Failure(e)
         case Success(results) => {
@@ -337,300 +154,184 @@ case class IterativeMatcher[Edge, Node, Label, Err, Evidence](
         }
       }
 
-      case Pos(ref, arc, _) => {
-        // Basic matching with no pending
-        // TODO: Accumulate triples checked?
-        addArcResult2(arc, rest)
-      }
       case Neg(ref, arc, _, es) => {
         // TODO: Throw exception?
         rest
       }
 
     }
-  }
+} */
 
-  private def addArcResult(arc: Arc_, result: Result_): Result_ = {
-    result match {
-      case Success(rs)    => Success(rs.map((pair) => (pair._1, pair._2 + arc)))
-      case f @ Failure(_) => f
-    }
-  }
-
-  private def resolveCandidates(
-    cs: Candidates_,
-    node: Node,
-    label: Label,
-    t: Typing_): Result_ = {
-    val checked: Set[(Node, Edge, Node)] = Set()
-    val zero: Result_ = t.addPosType(node, label).map(t => Seq((t, checked)))
-    cs.foldRight(zero)(resolveCandidate(node))
-  }
-
-  def filterChecked(cs: Seq[Result2_]): Seq[Result2_] = ???
-  //    cs.filter(c => c.isValid)
-
-  // TODO: Move to utils 
-  def filterSuccessSeq[A](ts: Seq[Try[Seq[A]]]): Try[Seq[Seq[A]]] = {
-    filterSuccess(ts)
-  }
-
-  // TODO: Move to utils 
-  def filterSuccessSeqFlatten[A](ts: Seq[Try[Seq[A]]]): Try[Seq[A]] = {
-    filterSuccessSeq(ts).map(s => s.flatten)
-  }
-
-  private def resolveAllCandidates(
-    css: Seq[Candidates_],
-    node: Node,
-    label: Label,
-    currentTyping: Typing_): Result_ = {
-    val attempts: Seq[Result_] =
-      css.map(cs => resolveCandidates(cs, node, label, currentTyping))
-    filterSuccessSeqFlatten(attempts)
-  }
-
-  /**
-   * Matches a node with several labels in a graph
-   * Takes into account the current result typing and triples
-   * Succeeds if the node matches with all the labels
-   */
-  private def matchNodeInAllLabelsTyping(
-    node: Node,
-    labels: Seq[Label],
-    current: SingleResult_): Result2_ = {
-    def comb(x: Label, current: SingleResult_): Result2_ = {
-      matchNodeInTyping(node, x, current)
-    }
-    ??? // combineAll(labels,current,comb _)
-  }
-
-  def combineAll[A, B, R](
-    labels: Seq[A],
-    current: R,
-    comb: (A, R) => CheckedVal[B, R]): CheckedVal[B, R] = ???
-
-  /* TODO: Check if it doesn't evaluate the whole seq */
-  def passSome[A, B](ls: Seq[A], eval: A => Try[Seq[B]]): Try[Seq[B]] = {
-    val maybes = ls.map(x => eval(x)).filter(x => x.isSuccess && !x.get.isEmpty).map(_.get)
-    if (maybes.isEmpty) {
-      Failure(SESchemaException("None of the alternatives pass"))
-    } else
-      Success(maybes.head)
-  }
-
-  /**
-   * Matches a node with several labels in a graph
-   * Takes into account the current result typing and triples
-   * Succeeds if the node matches with at least one of the labels
-   */
-  def matchNodeInSomeLabelsTyping(
-    node: Node,
-    labels: Seq[Label],
-    current: SingleResult_): Result2_ = {
-    def eval(x: Label): Result2_ = matchNodeInTyping(node, x, current)
-    ??? // Constraint.some(labels.map(l => eval(l)))
-    //    val r = passSome(labels,eval _)
-    //    ConsoleDebugger.debugStep(s"after passSome -> $r")
-    //    r
-  }
-
-  /**
-   * Matches a node with several labels in a graph
-   * Takes into account the current result typing and triples
-   * Succeeds if the node matches with at least one of the labels
-   */
-  def matchNodeInSomeTyping(
-    node: Node,
-    vs: Seq[NodeShape[Label, Node]],
-    current: SingleResult_): Result2_ = {
-    ConsoleDebugger.debugStep(s"matchNodeInSome. vs: $vs, current: $current")
-    def eval(x: NodeShape[Label, Node]): Result2_ = {
-      x match {
-        case Ref(label) => matchNodeInTyping(node, label, current)
-        case p: Pred[Node] => {
-          val r = p.pred(node)
-          mapChecked(r)
-          /*          if (r.isOK) Success(Seq(current))
-          else 
-            Success(Seq()) //Failure(throw new Exception(s"Failed predicate $p with errors ${r.errors}")) */
-        }
-        case _ => throw new Exception(s"matchNodeInSomeTyping: Unsupported $x")
-      }
-    }
-    // val r = passSome(vs,eval _)
-    // ConsoleDebugger.debugStep(s"after passSome -> $r")
-    // Constraint.some(vs.map(ns => eval(ns)))
-    ???
-  }
-
-  def mapChecked(c: CheckNode_): Result2_ = ???
-
-  def matchNodeInTyping(
-    node: Node,
-    label: Label,
-    current: SingleResult_): Result2_ = {
-    val shape = schema.m(label)
-    val r = shape match {
-      case s: SingleShape[DirectedEdge[Edge], Node, Label] =>
-        matchNodeSingleShapeInTyping(node, label, s, current)
-      case _ => throw new Exception(s"matchNodeInTyping: unsupported shape $shape")
-    }
-    ??? // result2Check(node, r)
-  }
-
-  /**
-   * Matches a node with a label in a graph
-   * Takes into account the current result typing and visited triples
-   */
-  def matchNodeSingleShapeInTyping(
-    node: Node,
-    label: Label,
-    shape: SingleShape[DirectedEdge[Edge], Node, Label],
-    current: SingleResult_): Result_ = {
-
-    val currentTyping = current._1
-    // If the node has already been checked, return without 
-    // checking again to avoid recursion
-    if (currentTyping.getLabels(node) contains label) {
-      // val s : Seq[(Edge,Node)] = Seq()
-      Success(Seq(current))
-    } else {
-      // TODO: Maybe, we could try again in a more dynamic setting
-      val neighs = graph.neighbours(node)
-      for {
-        (table, sorbe) <- mkTable(shape)
-        open = !shape.closed
-        allCandidates <- {
-          val cs = calculateCandidates(table, neighs, sorbe, node, open, shape.extras)
-          cs
-        }
-        newTyping <- currentTyping.addPosType(node, label)
-        results <- resolveAllCandidates(allCandidates, node, label, newTyping)
-      } yield {
-        if (shape.closed) {
-          // filter out results that don't affect all triples in neighbourhood
-          // that are not part of ignored
-          val extras = shape.extras
-          results.filter(r => containsAllTriples(node, extras, neighs, r._2))
-        } else results
-      }
-    }
-  }
-
-  def matchNodeSingleShapeNotTypedBefore(
-    node: Node,
-    label: Label,
-    shape: SingleShape[DirectedEdge[Edge], Node, Label],
-    neighs: Neighs_,
-    current: SingleResult_): Result_ = {
-    val currentTyping = current._1
-    val (table, sorbe) = mkTable2(shape)
-    val open = !shape.closed
+  def possibleCandidates(table: Table_, node: Node, neigh: Neigh_, attempt: Attempt_): Check[Candidates_] = {
+    val edge = neigh.directedEdge
+    val nodeToCheck = neigh.node
+    val constraints = lookupEdgeConstraints(table, edge)
+    val checks = constraints.map(c => checkCandidate(lookupConstraintShape(table, c), node, edge, nodeToCheck, c, attempt)).toList
     for {
-      allCandidates <- calculateCandidates(table, neighs, sorbe, node, open, shape.extras)
-      newTyping <- currentTyping.addPosType(node, label)
-      results <- resolveAllCandidates(allCandidates, node, label, newTyping)
-    } yield {
-      if (shape.closed) {
-        // filter out results that don't affect all triples in neighbourhood
-        // that are not part of ignored
-        val extras = shape.extras
-        results.filter(r => containsAllTriples(node, extras, neighs, r._2))
-      } else
-        results
-    }
-  }
-
-  def matchNodeSingleShapeInTyping2(
-    node: Node,
-    label: Label,
-    shape: SingleShape[DirectedEdge[Edge], Node, Label],
-    current: SingleResult_): Result2_ = {
-
-    val currentTyping = current._1
-    // If the node has already been checked, return without 
-    // checking again to avoid recursion
-    if (currentTyping.getLabels(node) contains label) {
-      ??? // okSingle(node,current,s"$node already has type $label in $currentTyping")
-    } else {
-      val neighs = graph.neighbours(node)
-      val maybe: Result_ =
-        matchNodeSingleShapeNotTypedBefore(node, label, shape, neighs, current)
-      ??? // result2Check(node,maybe)
-    }
-  }
-
-  def result2Check(
-    node: Node,
-    maybe: Try[Seq[SingleResult_]]): CheckedVal[Node, SingleResult_] = {
-    maybe match {
-      case Success(rs) => ??? // Checked.oks(singleReason(node,s"$node matched"), rs)
-      case Failure(e)  => errString(node, e.getMessage)
-    }
+      r <- checks.sequence
+    } yield r
   }
 
   /**
-   * Checks that a a node doesn't match with a label in a graph
-   * Takes into account the current result typing and triples
+   * Calculates the candidates of a node
+   *
+   * @param table Shape table
+   * @param node node to calculate candidates
+   * @param neighs neighbours of a node
    */
-  private def noMatchNodeInTyping(
-    node: Node,
-    label: Label,
-    current: SingleResult_): CheckTyping = {
+  def candidates(table: Table_,
+                 node: Node,
+                 neighs: Neighs_,
+                 attempt: Attempt_): Check[List[Candidates_]] = for {
+    _ <- logStr(attempt, s"Calculating candidates of $node, table: $table, neighs: $neighs")
+    val ps: List[Check[Candidates_]] = neighs.map(possibleCandidates(table, node, _, attempt)).toList
+    r <- ps.sequence
+  } yield r
 
-    val res = matchNodeInTyping(node, label, current)
-    ???
-    // val notRes = Constraint.not(res)
-    // notRes
-    /*    if (res.isFailure || res.get.isEmpty) {
-      Success(Seq(current))
-    } else {
-      Failure(SESchemaException(s"$node matches label $label"))
-    } */
-  }
-
-  def containsAllTriples(
-    node: Node,
-    extras: Seq[DirectedEdge[Edge]],
+  private def calculateCandidates(
+    table: Table_,
     out: Neighs_,
-    triples: Set[(Node, Edge, Node)]): Boolean = {
-    def notInIgnored(neigh: Neigh_): Boolean = {
-      !(schema.ignored contains neigh.directedEdge)
-    }
-    def notInExtras(extras: Seq[DirectedEdge[Edge]])(neigh: Neigh_): Boolean = {
-      !(extras contains neigh.directedEdge)
-    }
-    def onlyDirect(neigh: Neigh_): Boolean = {
-      neigh.isDirect
-    }
-    val outTriples: Seq[(Node, Edge, Node)] =
-      out.filter(notInIgnored).
-        filter(notInExtras(extras)).
-        filter(onlyDirect). // TODO: Modify this line when allowing CLOSED ^ 
-        map(_.mkTriple(node))
-    val cond = outTriples.forall(triples contains _)
-    cond
-  }
-
-  override def matchNode(
+    rbe: Rbe[ConstraintRef],
     node: Node,
-    label: Label): CheckTyping = {
-    matchNodeInTyping(node, label, (Typing.empty, Set()))
+    open: Boolean,
+    extras: Seq[DirectedEdge[Edge]],
+    attempt: Attempt_): Check[Seq[Candidates_]] = for {
+    cs <- filterCandidates(table, out, node, rbe, open, extras, attempt)
+  } yield cs
+
+  private def checkCandidate(
+    shape: NodeShape_,
+    node: Node,
+    edge: DirectedEdge[Edge],
+    nodeToCheck: Node,
+    c: ConstraintRef,
+    attempt: Attempt_): Check[Candidate_] = {
+    shape match {
+      case Ref(label) =>
+        ok(Pending(c, nodeToCheck, label, mkArc(edge, node, nodeToCheck), edge))
+
+      case RefNot(label) =>
+        ok(PendingNot(c, nodeToCheck, label, mkArc(edge, node, nodeToCheck), edge))
+
+      case DisjRef(labels) =>
+        ok(PendingAlt(c, nodeToCheck, labels, mkArc(edge, node, nodeToCheck), edge))
+
+      case OrShape(vs) =>
+        ok(PendingOr(c, nodeToCheck, vs, mkArc(edge, node, nodeToCheck), edge))
+
+      case ConjRef(labels) =>
+        ok(PendingSeq(c, nodeToCheck, labels, mkArc(edge, node, nodeToCheck), edge))
+
+      case p: Pred[Node, Err, Evidence] =>
+        matchPred(p, nodeToCheck, node, edge, c, attempt)
+
+      case _ => throw new Exception(s"testCandidate: unknown shape $shape")
+    }
   }
 
-/*  def matchNodesLabels(
-    ls: Seq[(Node, Label)]): Result2_ = {
-    val empty: SingleResult_ =
-      (PosNegTyping.empty, Set())
-    def comb(
-      pair: (Node, Label),
-      current: SingleResult_): Result2_ = {
-      matchNodeInTyping(pair._1, pair._2, current)
+  def matchPred(p: Pred[Node, Err, Evidence],
+                nodeToCheck: Node,
+                node: Node,
+                edge: DirectedEdge[Edge],
+                c: ConstraintRef,
+                attempt: Attempt_): Check[Candidate_] = {
+    val checked = p.pred(nodeToCheck)
+    val arc = mkArc(edge, node, nodeToCheck)
+    for {
+      _ <- logStr(attempt, s"Checking pred $p on node $nodeToCheck...node: $node")
+      r <- checked.fold(mkPos(arc, edge, c), mkNeg(arc, edge, c))
+    } yield r
+  }
+
+  def mkPos(arc: Triple_, edge: DirectedEdge[Edge], c: ConstraintRef)(p: (Node, Evidence)): Check[Candidate_] =
+    ok(Pos(c, arc, edge))
+
+  def mkNeg(arc: Triple_, edge: DirectedEdge[Edge], c: ConstraintRef)(es: NonEmptyList[RbeError]): Check[Candidate_] =
+    ok(Neg(c, arc, edge, es.toList.toSeq))
+
+  private def mkArc(
+    directedEdge: DirectedEdge[Edge],
+    n1: Node, n2: Node): Triple_ = {
+    directedEdge match {
+      case DirectEdge(edge)  => (n1, edge, n2)
+      case InverseEdge(edge) => (n2, edge, n1)
     }
-    // val r = combineAll(ls,empty,comb _)
-    ls.map { case (node, label) => ??? }
-    ???
-  } */
+  }
+
+  private def lookupConstraintShape(
+    table: Table_,
+    c: ConstraintRef): NodeShape_ = {
+    table.constraints.get(c) match {
+      case None =>
+        throw new Exception(s"Cannot find constraintRef $c in table $table")
+      case Some(nodeShape) =>
+        nodeShape
+    }
+  }
+
+  private def lookupEdgeConstraints(
+    table: Table_,
+    directedEdge: DirectedEdge[Edge]): Seq[ConstraintRef] = {
+    table.edges.get(directedEdge).getOrElse(Set()).toSeq
+  }
+
+  def filterCandidates(
+    table: Table_,
+    out: Neighs_,
+    node: Node,
+    Rbe: Rbe[ConstraintRef],
+    open: Boolean,
+    extras: Seq[DirectedEdge[Edge]],
+    attempt: Attempt_): Check[Seq[Candidates_]] = for {
+    css <- zipCandidates(table, node, out, attempt)
+  } yield css.filter(cs => matchCandidateRbe(cs, Rbe, open, extras))
+
+  def zipCandidates(table: Table_, node: Node, out: Neighs_, attempt: Attempt_): Check[Seq[Seq[Candidate_]]] = for {
+    cs <- candidates(table, node, out, attempt)
+  } yield zipN(cs)
+
+  private def matchCandidateRbe(cs: Seq[Candidate_],
+                                rbe: Rbe[ConstraintRef],
+                                open: Boolean,
+                                extras: Seq[DirectedEdge[Edge]]): Boolean = {
+    val bag = candidatesToBag(cs)
+    val intervalChecker = IntervalChecker(rbe)
+    if (containsContradictions(cs, extras)) false
+    else {
+      val checked = intervalChecker.check(bag, open)
+      checked.isRight
+    }
+
+  }
+
+  // TODO: The following code could be optimized using some mathematical formula
+  // A contradiction appears when a value N has sign -1 and another value N has sign +1
+  // allow contradictions if the predicate belongs to EXTRAs
+  private def containsContradictions(
+    cs: Seq[Candidate_],
+    extras: Seq[DirectedEdge[Edge]]): Boolean = {
+    val noExtras = cs.filter(c => !(extras contains c.edge))
+    // val pos = noExtras.filter(_.sign == 1).map(_.value)
+    val neg = noExtras.filter(_.sign == -1).map(_.value)
+    //    pos.intersect(neg).length != 0
+    neg.length != 0
+  }
+
+  // TODO: It ignores extra predicates (value None) and negative candidates by now
+  private def candidatesToBag(cs: Seq[Candidate_]): Bag[ConstraintRef] = {
+    Bag.toBag(cs.filter(_.sign == 1).map(_.value))
+  }
+
+  def errStr(msg: String): RbeError =
+    RbeError(msg)
+
+  def checkErrStr(msg: String): CheckTyping =
+    err(errStr(msg))
+
+  def checkFirst[A, B](cs: List[A], checker: A => Check[B], errorIfNone: Err): Check[B] =
+    checkSome(cs.map(checker), errorIfNone)
+
+  def logStr(attempt: Attempt_, msg: String): Check[Unit] =
+    addLog(MatcherLog(List((attempt, msg))))
 
 }

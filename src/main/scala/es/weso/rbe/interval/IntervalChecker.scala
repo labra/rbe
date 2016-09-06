@@ -7,6 +7,8 @@ import es.weso.rbe.deriv._
 case class IntervalChecker[A](rbe: Rbe[A]) extends BagChecker[A] {
   
   type Matched[B] = Either[String,B]
+  
+  def isOk[B](m: Matched[B]): Boolean = m.isRight
  
   lazy val derivChecker = DerivChecker(rbe)
   
@@ -21,9 +23,9 @@ case class IntervalChecker[A](rbe: Rbe[A]) extends BagChecker[A] {
          if (IntervalChecker.interval(rbe,bag).contains(1)) 
            Right(bag)
          else 
-           Left(s"$rbe doesn't match bag $bag. Open: $open, Extra symbols: ${extraSymbols(bag)}")
-           // Question: I had this:
-           // derivChecker.check(bag,open)  
+           // Question: Check using derivatives to obtain better error message
+           // TODO: Could it be optimized knowing that it will fail?
+           derivChecker.check(bag,open)
     }
   }
   
@@ -65,7 +67,7 @@ object IntervalChecker {
       // Adding Repetitions on expressions breaks the single-occurrence bag expression
       // This case is handled by detecting repetitions and invoking the derivatives algorithm
       case Repeat(v,n,m) =>
-         throw RbeException("Intervals algorithm doesn't work with repetitions. RBE expr: " + this)  
+         throw new Exception("Intervals algorithm doesn't work with repetitions. RBE expr: " + this)  
       
     }
     

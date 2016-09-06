@@ -8,31 +8,33 @@ import CheckVal._
 /**
  * A node shape
  */
-sealed trait NodeShape[+Label,+Node,Err,Evidence] {
+sealed trait NodeShape[+Node,+Label,Err,Evidence] {
 }
 
 /**
  *  Reference to another label
  */
-case class Ref[Label,Err,Evidence](label:Label) extends NodeShape[Label,Nothing,Err,Evidence] {
+case class Ref[Label,Err,Evidence](label:Label) extends NodeShape[Nothing, Label,Err,Evidence] {
 }
 
 /**
  * Negation of a expression
  */
-case class RefNot[Label,Err,Evidence](label:Label) extends NodeShape[Label,Nothing,Err,Evidence]
+case class RefNot[Label,Err,Evidence](label:Label) extends NodeShape[Nothing,Label,Err,Evidence]
 
 /**
  *  Reference to a sequence of labels
  */
-case class ConjRef[Label,Err,Evidence](labels:Seq[Label]) extends NodeShape[Label,Nothing,Err,Evidence]
+case class ConjRef[Label,Err,Evidence](labels:Seq[Label]) extends NodeShape[Nothing,Label,Err,Evidence]
 
 /**
  *  Reference to an sequence of labels which are disjunctive
  */
-case class DisjRef[Label,Err,Evidence](labels:Seq[Label]) extends NodeShape[Label,Nothing,Err,Evidence]
+case class DisjRef[Label,Err,Evidence](labels:Seq[Label]) extends NodeShape[Nothing,Label,Err,Evidence]
 
-case class OrShape[+Label,+Node,Err,Evidence](ns:Seq[NodeShape[Label,Node]]) extends NodeShape[Label,Node,Err,Evidence]
+case class OrShape[+Node, +Label,Err,Evidence](
+    ns:Seq[NodeShape[Node,Label,Err,Evidence]]
+ ) extends NodeShape[Node,Label,Err,Evidence]
 
 /**
  * Constraint on nodes (it has a name and a predicate).
@@ -43,7 +45,7 @@ case class OrShape[+Label,+Node,Err,Evidence](ns:Seq[NodeShape[Label,Node]]) ext
  */
 // TODO: Previous type of pred: Node => CheckedVal[Node,List[Node]]
 case class Pred[Node,Err,Evidence](name: String)
-   ( val pred: Node => CheckedVal[Node,Err,Evidence]) extends NodeShape[Nothing,Node,Err,Evidence] {
+   ( val pred: Node => CheckVal[Node,Err,Evidence]) extends NodeShape[Node,Nothing,Err,Evidence] {
 
 }
 
@@ -55,6 +57,6 @@ object NodeShape {
   /**
    * any = any value matches, so no constraint at all
    */
-  def any[Node,Err,Evidence:Read]: Pred[Node,Err,Evidence] =
+  def any[Node,Label,Err,Evidence:Read]: Pred[Node,Err,Evidence] =
       Pred("any")((node) => ok(node, s"$node satisfies constraint any"))
 }

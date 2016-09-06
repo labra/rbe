@@ -30,7 +30,7 @@ libraryDependencies ++= Seq(
 , "org.scalactic" %% "scalactic" % "2.2.6"  
 , "org.typelevel" %% "cats" % "0.7.0"
 , "es.weso" % "weso_utils_2.11" % "0.0.15" 
-, "es.weso" % "validating_2.11" % "0.0.16" 
+, "es.weso" % "validating_2.11" % "0.0.19" 
 )
 
 bintrayRepository in bintray := "weso-releases"

@@ -1,9 +1,5 @@
 package es.weso.rbe
 
-// import es.weso.validating.ConstraintError
-import es.weso.rbe.DirectedEdge
-import es.weso.rbe.NodeShape
-
 /**
  * A candidate to match
  */
@@ -96,7 +92,7 @@ case class PendingAlt[Edge,Node,Label,Err,Evidence](
 case class PendingOr[Edge,Node,Label,Err,Evidence](
     n : ConstraintRef, 
     node: Node, 
-    es: Seq[NodeShape[Label,Node,Err,Evidence]],
+    es: Seq[NodeShape[Node,Label,Err,Evidence]],
     arc:(Node,Edge,Node),
     edge: DirectedEdge[Edge]) extends Candidate[Edge,Node,Label,Err,Evidence] {
   def sign = 1
@@ -111,11 +107,11 @@ case class PendingOr[Edge,Node,Label,Err,Evidence](
 /**
  * A negative candidate
  */
-case class Neg[Edge,Node,Err,Evidence](
+case class Neg[Edge,Node,Label,Err,Evidence](
     n : ConstraintRef,
     arc:(Node,Edge,Node),
     edge: DirectedEdge[Edge],
-    errors: Seq[Err]) extends Candidate[Edge,Node,Nothing,Error,Evidence] {
+    errors: Seq[Err]) extends Candidate[Edge,Node,Label,Err,Evidence] {
   def sign = -1
   def value = n
   def isPending = false
@@ -137,3 +133,5 @@ case class Missing[Edge,Node,Err,Evidence](
   def value = n
   def isPending = false
 }
+
+

@@ -3,7 +3,7 @@ package es.weso.rbe
 import org.scalatest._
 import es.weso.collection._
 import es.weso.rbe.interval._
-import Interval._
+import interval._
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Prop._
 import org.scalatest.prop.Checkers

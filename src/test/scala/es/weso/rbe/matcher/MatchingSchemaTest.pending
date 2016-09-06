@@ -2,13 +2,14 @@ package es.weso.rbe.matcher
 
 import org.scalatest._
 import util._
-import es.weso.typing.PosNegTyping
 import es.weso.rbe._
 import StringGraph._
 import Shape._
 
 
 class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
+
+  type Schema_ = Schema[String,String,String,RbeErr,String]
   
   def noTs: Set[(String,String,String)] = Set()
 
@@ -18,7 +19,7 @@ class MatchingSchemaTest extends FunSpec with Matchers with TryValues {
         "n0" -> List(("a", "n0")))
     )
 
-    val s : Schema[String,String,String] =
+    val s : Schema_ =
       Schema(
         Map("t0" ->
           Shape.empty.copy(rbe = Symbol(((DirectEdge("a"), Ref("t0"))), 1, 1))),

@@ -3,7 +3,10 @@ import cats._, data._
 import implicits._
 import es.weso.utils.Read
 
-case class CheckVal[A, Err, Evidence](t: ValidatedNel[Err,(A,Evidence)])
+case class CheckVal[A, Err, Evidence](t: ValidatedNel[Err,(A,Evidence)]) {
+  def fold[B](ifOK: ((A,Evidence)) => B, ifErr: NonEmptyList[Err] => B): B = 
+    t.fold(ifErr, ifOK)
+}
 
 object CheckVal {
 

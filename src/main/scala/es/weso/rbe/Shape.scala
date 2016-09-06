@@ -11,8 +11,8 @@ abstract class Shape[Edge,Node,Label,Err,Evidence]
   * @param closed the shape is closed
   */
 case class SingleShape[Edge,Node,Label,Err,Evidence](
-    nodeShape: NodeShape[Label,Node,Err,Evidence],
-    rbe: Rbe[(Edge,NodeShape[Label,Node,Err,Evidence])], 
+    nodeShape: NodeShape[Node,Label,Err,Evidence],
+    rbe: Rbe[(Edge,NodeShape[Node,Label,Err,Evidence])], 
     extras: Seq[Edge], 
     closed: Boolean
 ) extends Shape[Edge,Node,Label,Err,Evidence]
@@ -39,7 +39,7 @@ object Shape {
     )
 
   def singleShape[Edge,Node,Label,Err,Evidence: Read](
-      rbe: Rbe[(Edge,NodeShape[Label,Node,Err,Evidence])],
+      rbe: Rbe[(Edge,NodeShape[Node,Label,Err,Evidence])],
       extras: Seq[Edge] = Seq(),
       closed: Boolean = false): SingleShape[Edge,Node,Label,Err,Evidence] =
     SingleShape(

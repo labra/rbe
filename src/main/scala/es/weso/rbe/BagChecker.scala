@@ -7,5 +7,5 @@ trait BagChecker[A] {
   def rbe: Rbe[A]
 
   def check(bag:Bag[A], open: Boolean): Either[String,Bag[A]]
-
+  
 }
