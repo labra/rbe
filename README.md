@@ -1,10 +1,11 @@
 rbe - Regular Bag Expressions Library
 =========================
-[![Build Status](https://travis-ci.org/labra/rbe.svg?branch=master)](https://travis-ci.org/labra/rbe)
 
-A simple library for Regular Bag Expressions
+A simple library for Regular Bag Expressions. 
 
-Some libraries that use SRDF are:
+The source code in this repository is not maintained as it has been integrated as a [Shaclex module](https://github.com/labra/shaclex/tree/master/modules/rbe).
+
+Some libraries that used SRDF are:
 
 * [ShExcala](http://labra.github.io/ShExcala/)
 
@@ -20,4 +21,4 @@ Jose Emilio Labra Gayo
 
 # Acknowledgments
 
-* Iovka Boneva 
+* Iovka Boneva
